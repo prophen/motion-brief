@@ -164,6 +164,11 @@ function safeAssetKey(projectId: string, kind: StoredAsset['kind'], mimeType: st
   return `motionbrief/${safeProjectId}/${kind}-${crypto.randomUUID()}.${extension}`
 }
 
+function appFileUrl(key: string): string {
+  const encoded = key.split('/').map(encodeURIComponent).join('/')
+  return `/api/files/${encoded}?scope=app`
+}
+
 export async function storeRemoteAsset(
   env: Env,
   input: { projectId: string; kind: StoredAsset['kind']; sourceUrl: string; signal?: AbortSignal },
@@ -203,7 +208,8 @@ export async function storeRemoteAsset(
   return {
     kind: input.kind,
     key: result.key,
-    url: result.url,
+    // Platform-service URLs are not browser-facing; route through this app.
+    url: appFileUrl(result.key),
     mimeType,
     sourceUrl: input.sourceUrl,
     storedAt: new Date().toISOString(),
