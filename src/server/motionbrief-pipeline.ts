@@ -6,8 +6,8 @@ export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
 export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
 export const FAL_STILL_MAX_COST_USD = 0.04
-export const FAL_MOTION_MODEL = 'luma/agent/ray/v3.2/image-to-video'
-export const FAL_MOTION_MAX_COST_USD = 0.5
+export const FAL_MOTION_MODEL = 'wan/v2.6/image-to-video/flash'
+export const FAL_MOTION_MAX_COST_USD = 0.25
 
 export type CreativeBrief = {
   title: string
@@ -189,10 +189,11 @@ export async function submitFalMotion(
     input: {
       prompt: input.prompt.trim(),
       image_url: imageUrl,
-      aspect_ratio: '9:16',
-      resolution: '540p',
-      duration: '5s',
-      loop: false,
+      resolution: '720p',
+      duration: '5',
+      generate_audio: false,
+      multi_shots: false,
+      enable_safety_checker: true,
     },
   }))
   const data = asObject(response?.data) ?? response

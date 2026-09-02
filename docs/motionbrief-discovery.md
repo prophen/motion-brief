@@ -86,7 +86,7 @@ The active catalog is large and paginated. The following candidates were selecte
 
 ### Image-to-video shortlist
 
-**Recommended for predictable MVP cost: `luma/agent/ray/v3.2/image-to-video`** — active, commercial, runnable; **$0.50 per 5 seconds**.
+**Initial recommendation (superseded after live failures): `luma/agent/ray/v3.2/image-to-video`** — active, commercial, runnable; **$0.50 per 5 seconds**.
 
 - Required: `prompt` (1–6,000 chars).
 - For the MVP provide `image_url`; optional `end_image_url` enables first/last-frame interpolation.
@@ -209,3 +209,11 @@ Proposed five-second DeepSpace `shotstack/render` request (placeholders are runt
 ### Remaining validation before a paid render
 
 The contract itself is no longer ambiguous. The first paid smoke test should still verify three runtime facts with one five-second render: that the exact DeepSpace app-file URLs are externally fetchable by Shotstack, that the chosen font is available without declaring a custom font URL, and that the narration is at most five seconds. If narration is shorter, silence is acceptable; if longer, revise the copy or choose a longer video before rendering rather than truncating it accidentally.
+
+## Motion provider fallback discovery (2026-09-02)
+
+Two submissions to `luma/agent/ray/v3.2/image-to-video` returned `502 upstream_provider_error`. The stored DeepSpace image URL was independently verified as a public HTTPS JPEG (`200`), so the failure is upstream of MotionBrief's asset handoff. The live FAL catalog still marks Luma active, but it should not be retried for this MVP until its provider recovers.
+
+**Recommended fallback: `wan/v2.6/image-to-video/flash`.** It is active, commercial, and runnable, billed at **$0.05 per second**. Required input is `{ prompt, image_url }`. For MotionBrief use `{ duration: "5", resolution: "720p", generate_audio: false, multi_shots: false, enable_safety_checker: true }`. The prompt is limited to 1,500 characters. Output is `{ video: { url, content_type?, file_name?, file_size?, width?, height?, fps?, duration?, num_frames? }, seed, actual_prompt? }`. A five-second run has a published provider ceiling of $0.25 before any documented silent-video discount; retain a `maxCostUsd: 0.25` gate. Based on the observed DeepSpace reservation multiplier for Luma ($0.50 provider price → $0.65 reservation), show an estimated account reservation of $0.325 and let the ledger remain authoritative.
+
+Other live fallbacks inspected without generation: `bytedance/seedance-2.0/mini/image-to-video` remains runnable at $0.007 per 1,000 tokens but lacks a predictable duration-only total; `fal-ai/ltx-2.3/image-to-video/fast` is runnable at $0.06 per second but has a six-second minimum and 1080p minimum, making it a poorer fit for the five-second MVP.
