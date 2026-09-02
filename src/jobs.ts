@@ -41,7 +41,7 @@
 
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
-import { generateCreativeBrief, MOTIONBRIEF_PIPELINE_VERSION } from './server/motionbrief-pipeline.js'
+import { generateCreativeBrief, MOTIONBRIEF_PIPELINE_VERSION, pollFalStill, storeRemoteAsset, submitFalStill } from './server/motionbrief-pipeline.js'
 
 export async function runJob(
   job: Job,
@@ -70,6 +70,65 @@ export async function runJob(
       pipelineVersion: MOTIONBRIEF_PIPELINE_VERSION,
       assetManifest: [],
     }
+  }
+
+  if (job.type === 'motionbrief-generate-still') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('paid_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; stillPrompt: string }
+    const resume = job.resumeFrom as { requestId: string; polls: number } | undefined
+    if (!resume) {
+      ctx.progress(0.05, 'Submitting one capped FAL image')
+      const submission = await submitFalStill(env, payload.stillPrompt)
+      ctx.progress(0.2, 'Image queued at FAL')
+      ctx.continue({ requestId: submission.requestId, polls: 0 }, { afterMs: 1500 })
+      return
+    }
+    if (resume.polls >= 80) throw new Error('fal_still_poll_timeout')
+    const polled = await pollFalStill(env, resume.requestId)
+    if (polled.status === 'failed') throw new Error(polled.error)
+    if (polled.status === 'pending') {
+      const detail = polled.queuePosition === undefined ? 'Generating still' : `Queue position ${polled.queuePosition}`
+      ctx.progress(Math.min(0.25 + resume.polls * 0.008, 0.88), detail)
+      ctx.continue({ requestId: resume.requestId, polls: resume.polls + 1 }, { afterMs: 1500 })
+      return
+    }
+    ctx.progress(0.9, 'Copying still to durable storage')
+    let asset
+    try {
+      asset = await storeRemoteAsset(env, {
+        projectId: payload.projectId,
+        kind: 'image',
+        sourceUrl: polled.imageUrl,
+        signal: ctx.signal,
+      })
+    } catch (error) {
+      // Preserve the paid output so storage can be retried without regenerating.
+      return {
+        projectId: payload.projectId,
+        temporaryImageUrl: polled.imageUrl,
+        storageError: error instanceof Error ? error.message : 'asset_storage_failed',
+      }
+    }
+    ctx.progress(1, 'Still image ready')
+    return { projectId: payload.projectId, asset }
+  }
+
+  if (job.type === 'motionbrief-store-still') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('storage_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; sourceUrl: string }
+    ctx.progress(0.2, 'Retrying durable storage')
+    const asset = await storeRemoteAsset(env, {
+      projectId: payload.projectId,
+      kind: 'image',
+      sourceUrl: payload.sourceUrl,
+      signal: ctx.signal,
+    })
+    ctx.progress(1, 'Still image stored')
+    return { projectId: payload.projectId, asset }
   }
 
   throw new Error(`Unknown job type: ${job.type}`)

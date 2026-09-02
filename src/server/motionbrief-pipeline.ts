@@ -4,6 +4,8 @@ import { countWords, NARRATION_HARD_MAX_WORDS, NARRATION_TARGET_MIN_WORDS } from
 
 export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
+export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
+export const FAL_STILL_MAX_COST_USD = 0.04
 
 export type CreativeBrief = {
   title: string
@@ -25,6 +27,12 @@ export type StoredAsset = {
   sourceUrl: string
   storedAt: string
 }
+
+export type FalStillSubmission = { requestId: string }
+export type FalStillPoll =
+  | { status: 'pending'; queuePosition?: number }
+  | { status: 'failed'; error: string }
+  | { status: 'complete'; imageUrl: string }
 
 function requirePaidIntegrations(env: Env): void {
   if (env.MOTIONBRIEF_PAID_INTEGRATIONS_ENABLED !== 'true') {
@@ -101,6 +109,55 @@ export async function generateCreativeBrief(
   return parseCreativeBrief(extractChatContent(await response.json()))
 }
 
+async function callIntegration(env: Env, endpoint: string, body: unknown): Promise<unknown> {
+  requirePaidIntegrations(env)
+  const response = await apiWorkerFetch(env, `/api/integrations/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.APP_OWNER_JWT}` },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new Error(`${endpoint.replaceAll('/', '_')}_failed_${response.status}`)
+  return await response.json()
+}
+
+export async function submitFalStill(env: Env, prompt: string): Promise<FalStillSubmission> {
+  if (!prompt.trim()) throw new Error('still_prompt_required')
+  const response = asObject(await callIntegration(env, 'fal/run-model', {
+    model_id: FAL_STILL_MODEL,
+    maxCostUsd: FAL_STILL_MAX_COST_USD,
+    input: {
+      prompt: prompt.trim(),
+      image_size: 'portrait_16_9',
+      num_images: 1,
+      max_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+      return_byteplus_urls: false,
+    },
+  }))
+  const data = asObject(response?.data) ?? response
+  const requestId = data?.jobId ?? data?.request_id
+  if (typeof requestId !== 'string') throw new Error('fal_still_submission_missing_job_id')
+  return { requestId }
+}
+
+export async function pollFalStill(env: Env, requestId: string): Promise<FalStillPoll> {
+  const response = asObject(await callIntegration(env, 'fal/get-result', { request_id: requestId }))
+  const data = asObject(response?.data) ?? response
+  const status = typeof data?.status === 'string' ? data.status.toLowerCase() : ''
+  if (['failed', 'error', 'cancelled', 'canceled'].includes(status)) {
+    return { status: 'failed', error: typeof data?.error === 'string' ? data.error : 'FAL generation failed' }
+  }
+  const output = asObject(data?.output)
+  const images = output?.images
+  const image = Array.isArray(images) ? asObject(images[0]) : null
+  if (typeof image?.url === 'string') return { status: 'complete', imageUrl: image.url }
+  return {
+    status: 'pending',
+    queuePosition: typeof data?.queuePosition === 'number' ? data.queuePosition : undefined,
+  }
+}
+
 function safeAssetKey(projectId: string, kind: StoredAsset['kind'], mimeType: string): string {
   const extension = mimeType.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'bin'
   const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -133,6 +190,8 @@ export async function storeRemoteAsset(
     headers: {
       'x-app-identity-token': env.APP_IDENTITY_TOKEN,
       'x-app-id': env.DEEPSPACE_APP_ID,
+      // App scope controls visibility; mutations still require an authenticated actor.
+      'x-user-id': env.OWNER_USER_ID,
     },
     body: form,
   }))
