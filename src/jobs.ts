@@ -42,7 +42,7 @@
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
 import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, preflightShotstackAssets, runProviderDiagnostic, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
-import { MOTION_GENERATION_ENABLED } from './lib/pipeline-config.js'
+import { FINAL_RENDER_ENABLED, MOTION_GENERATION_ENABLED } from './lib/pipeline-config.js'
 import { buildShotstackTextOnlySmokeEdit } from './lib/shotstack.js'
 
 const FAL_PROVIDER_SMOKE_MODEL = 'wan/v2.6/text-to-video'
@@ -268,6 +268,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-render-final') {
+    if (!FINAL_RENDER_ENABLED) throw new Error('shotstack_render_temporarily_paused')
     if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
       throw new Error('paid_job_requires_app_owner')
     }
