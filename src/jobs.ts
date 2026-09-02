@@ -41,14 +41,44 @@
 
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
-import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
+import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, runProviderDiagnostic, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
 import { MOTION_GENERATION_ENABLED } from './lib/pipeline-config.js'
+import { buildShotstackTextOnlySmokeEdit } from './lib/shotstack.js'
+
+const FAL_PROVIDER_SMOKE_MODEL = 'wan/v2.6/text-to-video'
+const FAL_PROVIDER_SMOKE_MAX_COST_USD = 1
 
 export async function runJob(
   job: Job,
   ctx: JobContext,
   env: Env,
 ): Promise<unknown> {
+  if (job.type === 'motionbrief-smoke-fal-provider') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) throw new Error('diagnostic_job_requires_app_owner')
+    ctx.progress(0.1, 'Submitting asset-free FAL provider control')
+    const diagnostic = await runProviderDiagnostic(env, {
+      provider: 'fal', endpoint: 'fal/run-model', model: FAL_PROVIDER_SMOKE_MODEL,
+      body: {
+        model_id: FAL_PROVIDER_SMOKE_MODEL,
+        maxCostUsd: FAL_PROVIDER_SMOKE_MAX_COST_USD,
+        input: { prompt: 'A red paper airplane glides across a clear blue sky.', duration: '5' },
+      },
+    })
+    ctx.progress(1, diagnostic.ok ? 'FAL accepted the control' : 'FAL rejected the control')
+    return { diagnostic, maximumProviderCostUsd: FAL_PROVIDER_SMOKE_MAX_COST_USD }
+  }
+
+  if (job.type === 'motionbrief-smoke-shotstack-provider') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) throw new Error('diagnostic_job_requires_app_owner')
+    ctx.progress(0.1, 'Submitting text-only Shotstack provider control')
+    const diagnostic = await runProviderDiagnostic(env, {
+      provider: 'shotstack', endpoint: 'shotstack/render', model: 'render/text-only',
+      body: buildShotstackTextOnlySmokeEdit(),
+    })
+    ctx.progress(1, diagnostic.ok ? 'Shotstack accepted the control' : 'Shotstack rejected the control')
+    return { diagnostic, billedDurationSeconds: 1 }
+  }
+
   if (job.type === 'motionbrief-preview') {
     const payload = job.payload as { projectId: string; headline: string }
     ctx.progress(0.2, 'Brief locked')

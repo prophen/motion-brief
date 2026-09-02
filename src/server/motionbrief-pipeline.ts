@@ -4,6 +4,7 @@ import { countWords, NARRATION_HARD_MAX_WORDS, NARRATION_TARGET_MIN_WORDS } from
 import { DEFAULT_MOTIONBRIEF_VOICE_ID, isMotionBriefVoiceId } from '../lib/voices.js'
 import { decodeBase64DataUrl, type StoredAsset } from '../lib/assets.js'
 import { buildShotstackEdit } from '../lib/shotstack.js'
+import { sanitizeDiagnosticBody } from '../lib/provider-diagnostics.js'
 
 export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
@@ -138,6 +139,45 @@ async function callIntegration(env: Env, endpoint: string, body: unknown): Promi
     throw new Error(`${endpoint.replaceAll('/', '_')}_failed_${response.status}${suffix}`)
   }
   return JSON.parse(responseText)
+}
+
+export type ProviderDiagnostic = {
+  provider: string
+  endpoint: string
+  model: string
+  httpStatus: number
+  ok: boolean
+  correlation: Record<string, string>
+  responseBody: unknown
+  checkedAt: string
+}
+
+export async function runProviderDiagnostic(
+  env: Env,
+  input: { provider: string; endpoint: string; model: string; body: unknown },
+): Promise<ProviderDiagnostic> {
+  requirePaidIntegrations(env)
+  const response = await apiWorkerFetch(env, `/api/integrations/${input.endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.APP_OWNER_JWT}` },
+    body: JSON.stringify(input.body),
+  })
+  const responseText = await response.text()
+  const correlation: Record<string, string> = {}
+  for (const name of ['x-request-id', 'request-id', 'cf-ray', 'traceparent']) {
+    const value = response.headers.get(name)
+    if (value) correlation[name] = value
+  }
+  return {
+    provider: input.provider,
+    endpoint: input.endpoint,
+    model: input.model,
+    httpStatus: response.status,
+    ok: response.ok,
+    correlation,
+    responseBody: sanitizeDiagnosticBody(responseText),
+    checkedAt: new Date().toISOString(),
+  }
 }
 
 export async function submitFalStill(env: Env, prompt: string): Promise<FalStillSubmission> {

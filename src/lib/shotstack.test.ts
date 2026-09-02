@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildShotstackEdit } from './shotstack'
+import { buildShotstackEdit, buildShotstackTextOnlySmokeEdit } from './shotstack'
 
 describe('Shotstack edit contract', () => {
   it('builds a silent five-second vertical timeline', () => {
@@ -19,5 +19,12 @@ describe('Shotstack edit contract', () => {
   it('rejects non-public asset protocols', () => {
     expect(() => buildShotstackEdit({ headline: 'MOVE', videoUrl: '/api/files/video.mp4' })).toThrow('Invalid URL')
     expect(() => buildShotstackEdit({ headline: 'MOVE', videoUrl: 'http://example.com/video.mp4' })).toThrow('video_asset_must_use_https')
+  })
+
+  it('builds a one-second text-only provider control with no external assets', () => {
+    const edit = buildShotstackTextOnlySmokeEdit()
+    expect(edit.duration).toBe(1)
+    expect(JSON.stringify(edit)).not.toContain('src')
+    expect(edit.output).toEqual({ format: 'mp4', resolution: 'sd' })
   })
 })

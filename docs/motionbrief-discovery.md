@@ -223,3 +223,12 @@ Other live fallbacks inspected without generation: `bytedance/seedance-2.0/mini/
 The first Wan submission also returned `502 upstream_provider_error` when its `image_url` used the DeepSpace app-file proxy, even though that URL returned a public `200 image/jpeg`. Because the original `v3b.fal.media` still URL remained available and returned the identical JPEG, the next isolated smoke test should pass that provider-native URL back to FAL while retaining the DeepSpace copy as the durable canonical asset. This avoids a cross-provider fetch hop; it remains a smoke-test tactic because upstream FAL URLs may expire.
 
 A second deployed Wan submission using the healthy provider-native `v3b.fal.media` URL returned the same `502 upstream_provider_error`. Production logs identify separate failed job IDs before and after that URL change. Combined with the earlier Luma failures, this isolates the blocker to DeepSpace's FAL video submission path or FAL's shared video backend rather than MotionBrief's payload, chosen video provider, or asset host. Do not spend on further retries until that integration path is repaired or provides more specific upstream diagnostics.
+
+## Provider controls (2026-09-02)
+
+An owner-only server-side diagnostic used the same `apiWorkerFetch` path as MotionBrief and captured sanitized bodies plus correlation headers.
+
+- **FAL asset-free control accepted:** `wan/v2.6/text-to-video`, ordinary prompt, five-second duration, no media URLs. DeepSpace returned HTTP 200 (`cf-ray: a34ebfa908e88bdb-SJC`). This shows the general DeepSpace → FAL submission path works; the repeated failures are narrower to the tested image-to-video paths/models or their upstream handling.
+- **Shotstack control reached provider validation:** the first one-second text-only request returned DeepSpace HTTP 502 (`cf-ray: a34ebfb2b94d8bdb-SJC`), but its sanitized body contained Shotstack HTTP 400 with request ID `req_1788375535577_08doxdmir`: `output requires either "resolution" or "size"`. Therefore `upstream_provider_error` can mask an actionable provider validation error. The diagnostic payload now includes `resolution: "sd"`, but it has not been rerun.
+
+The Shotstack result is not evidence of a shared gateway outage. The next approved diagnostic should capture the full sanitized body for MotionBrief's real render payload, or rerun the corrected text-only control, before changing asset hosting or adding `transcode: true`.

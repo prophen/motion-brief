@@ -29,3 +29,14 @@ export function buildShotstackEdit(input: { headline: string; videoUrl: string; 
     duration: RENDER_SECONDS,
   }
 }
+
+export function buildShotstackTextOnlySmokeEdit() {
+  return {
+    timeline: {
+      background: '#111111',
+      tracks: [{ clips: [{ asset: { type: 'text', text: 'Provider smoke test' }, start: 0, length: 1 }] }],
+    },
+    output: { format: 'mp4', resolution: 'sd' },
+    duration: 1,
+  }
+}
