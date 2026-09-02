@@ -19,7 +19,7 @@ function collectMessages(value: unknown, messages: string[], requestIds: string[
   }
 }
 
-export function formatIntegrationError(endpoint: string, status: number, responseText: string): string {
+export function formatIntegrationError(endpoint: string, status: number, responseText: string, correlation?: string): string {
   let parsed: unknown = responseText
   try { parsed = JSON.parse(responseText) } catch { /* Keep plain text. */ }
   const messages: string[] = [], requestIds: string[] = []
@@ -29,6 +29,6 @@ export function formatIntegrationError(endpoint: string, status: number, respons
     ?? uniqueMessages.at(-1)
     ?? (typeof parsed === 'string' ? parsed : '')
   const detail = useful.replace(/\s+/g, ' ').slice(0, 360)
-  const request = [...new Set(requestIds)].at(-1)
+  const request = [...new Set(requestIds)].at(-1) ?? correlation
   return `${endpoint.replaceAll('/', '_')}_failed_${status}${detail ? `: ${detail}` : ''}${request ? ` (request ${request})` : ''}`
 }

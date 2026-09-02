@@ -128,7 +128,11 @@ async function callIntegration(env: Env, endpoint: string, body: unknown): Promi
     body: JSON.stringify(body),
   })
   const responseText = await response.text()
-  if (!response.ok) throw new Error(formatIntegrationError(endpoint, response.status, responseText))
+  const correlation = response.headers.get('x-request-id')
+    ?? response.headers.get('request-id')
+    ?? response.headers.get('cf-ray')
+    ?? undefined
+  if (!response.ok) throw new Error(formatIntegrationError(endpoint, response.status, responseText, correlation))
   return JSON.parse(responseText)
 }
 
@@ -310,13 +314,22 @@ export async function submitShotstackRender(
 ): Promise<{ renderId: string }> {
   if (!input.headline.trim()) throw new Error('headline_required')
   if (!input.videoKey.trim()) throw new Error('stored_video_required')
-  const response = asObject(await callIntegration(env, 'shotstack/render', buildShotstackEdit({
+  const edit = buildShotstackEdit({
     headline: input.headline,
     videoUrl: publicAppAssetUrl(env, input.videoKey),
     videoLength: input.videoLength,
     audioUrl: input.audioKey ? publicAppAssetUrl(env, input.audioKey) : undefined,
     audioLength: input.audioLength,
-  })))
+  })
+  console.info('[motionbrief] submitting Shotstack edit', JSON.stringify({
+    duration: edit.duration,
+    tracks: edit.timeline.tracks.map(track => track.clips.map(value => {
+      const clip = value as { asset: { type: string; transcode?: boolean }; start: number; length: number }
+      return { type: clip.asset.type, start: clip.start, length: clip.length, transcode: clip.asset.transcode }
+    })),
+    output: edit.output,
+  }))
+  const response = asObject(await callIntegration(env, 'shotstack/render', edit))
   const data = asObject(response?.data) ?? response
   if (typeof data?.id !== 'string') throw new Error('shotstack_submission_missing_render_id')
   return { renderId: data.id }
