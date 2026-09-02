@@ -116,6 +116,8 @@ export interface Env extends DOBindings<typeof __DO_MANIFEST__> {
    * an authenticated app owner/admin. deepspace dev/test set it locally.
    */
   ALLOW_DEBUG_ROUTES?: string
+  /** Explicit kill switch for every developer-billed MotionBrief call. */
+  MOTIONBRIEF_PAID_INTEGRATIONS_ENABLED?: string
 }
 
 export type AppContext = { Bindings: Env }

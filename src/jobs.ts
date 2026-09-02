@@ -40,11 +40,34 @@
  */
 
 import type { Job, JobContext } from 'deepspace/worker'
+import type { Env } from '../worker.js'
+import { generateCreativeBrief, MOTIONBRIEF_PIPELINE_VERSION } from './server/motionbrief-pipeline.js'
 
 export async function runJob(
-  _job: Job,
-  _ctx: JobContext,
-  _env: unknown,
-): Promise<void> {
-  // No-op — implement your job handlers here. Dispatch on `_job.type`.
+  job: Job,
+  ctx: JobContext,
+  env: Env,
+): Promise<unknown> {
+  if (job.type === 'motionbrief-preview') {
+    const payload = job.payload as { projectId: string; headline: string }
+    ctx.progress(0.2, 'Brief locked')
+    ctx.progress(0.55, 'Preview frame prepared')
+    ctx.progress(0.85, 'Timeline assembled')
+    return { ...payload, mode: 'mock', paidCalls: 0 }
+  }
+
+  if (job.type === 'motionbrief-generate-brief') {
+    const payload = job.payload as { projectId: string; prompt: string }
+    ctx.progress(0.05, 'Validating paid-call gate')
+    const brief = await generateCreativeBrief(env, payload.prompt)
+    ctx.progress(1, 'Creative brief generated')
+    return {
+      projectId: payload.projectId,
+      brief,
+      pipelineVersion: MOTIONBRIEF_PIPELINE_VERSION,
+      assetManifest: [],
+    }
+  }
+
+  throw new Error(`Unknown job type: ${job.type}`)
 }

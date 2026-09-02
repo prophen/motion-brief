@@ -18,6 +18,11 @@
 
 export const THEMES = [
   {
+    id: 'motion-studio',
+    label: 'Motion Studio',
+    description: 'Warm cinematic black with an edit-marker orange accent.',
+  },
+  {
     id: 'slate',
     label: 'Slate',
     description: 'Neutral dark placeholder default. Replace with your own theme.',
@@ -33,9 +38,9 @@ export type ThemeId = (typeof THEMES)[number]['id']
 
 /** Read the currently active theme id from <html data-theme>. */
 export function getActiveTheme(): ThemeId {
-  if (typeof document === 'undefined') return 'slate'
+  if (typeof document === 'undefined') return 'motion-studio'
   const id = document.documentElement.getAttribute('data-theme') as ThemeId | null
-  return id ?? 'slate'
+  return id ?? 'motion-studio'
 }
 
 /** Look up a theme entry by id, or fall back to the first theme. */

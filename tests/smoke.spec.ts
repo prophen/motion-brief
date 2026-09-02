@@ -44,6 +44,10 @@ test.describe('Smoke tests', () => {
   test('dynamic app boundary mounts on /home', async ({ page }) => {
     await page.goto('/home')
     await expect(page.getByTestId('app-navigation')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('heading', { name: 'Build the brief. Ship the frame.' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /preview pipeline/i })).toBeVisible()
+    await expect(page.getByText('This is a placeholder page.')).toHaveCount(0)
+    await expect(page).toHaveTitle(/MotionBrief/)
   })
 
   test('sign-in button visible when logged out', async ({ page }) => {

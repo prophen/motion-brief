@@ -44,3 +44,29 @@
   --color-shell: #fafafa;
   --color-shell-panel: #ffffff;
 }
+
+[data-theme="motion-studio"] {
+  color-scheme: dark;
+  --color-background: #0d0d0b;
+  --color-foreground: #f4f1e8;
+  --color-card: #171714;
+  --color-card-foreground: #f4f1e8;
+  --color-popover: #1b1b17;
+  --color-popover-foreground: #f4f1e8;
+  --color-primary: #ff6b35;
+  --color-primary-foreground: #160b06;
+  --color-secondary: #23231e;
+  --color-secondary-foreground: #f4f1e8;
+  --color-muted: #22221d;
+  --color-muted-foreground: #aaa79d;
+  --color-accent: #2e2d25;
+  --color-accent-foreground: #fff7e8;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #35342d;
+  --color-input: #3e3c33;
+  --color-ring: #ff6b35;
+  --color-shell: #090908;
+  --color-shell-panel: #171714;
+  --radius: 0.7rem;
+}

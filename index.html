@@ -4,12 +4,12 @@
   To switch themes, change `data-theme` to any id defined in src/themes.ts.
   Color values per theme live in src/themes.css.
 -->
-<html lang="en" data-theme="slate">
+<html lang="en" data-theme="motion-studio">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" />
-    <title>motion-brief</title>
+    <title>MotionBrief — prompt to motion</title>
     <!--
       First-paint background, keyed to the data-theme attribute above.
       Without this the browser paints white until the CSS bundle arrives —
@@ -18,7 +18,7 @@
       adding or editing themes.
     -->
     <style>
-      html { background-color: #0a0a0a; color-scheme: dark; }
+      html { background-color: #0d0d0b; color-scheme: dark; }
       html[data-theme="paper"] { background-color: #ffffff; color-scheme: light; }
       /* Add one line per theme you create, mirroring its --color-background. */
     </style>
