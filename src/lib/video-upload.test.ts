@@ -10,7 +10,7 @@ describe('uploaded motion validation', () => {
     expect(validateUploadedMotion({ ...valid, size: MAX_UPLOADED_VIDEO_BYTES + 1 })).toContain('100 MB')
   })
   it('rejects wrong duration and aspect ratio', () => {
-    expect(validateUploadedMotion({ ...valid, duration: 8 })).toContain('4.5')
+    expect(validateUploadedMotion({ ...valid, duration: 8 })).toContain('4.95')
     expect(validateUploadedMotion({ ...valid, width: 1920, height: 1080 })).toContain('vertical')
     expect(validateUploadedMotion({ ...valid, width: 900, height: 1200 })).toContain('9:16')
   })

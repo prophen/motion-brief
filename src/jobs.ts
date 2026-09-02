@@ -271,7 +271,7 @@ export async function runJob(
     if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
       throw new Error('paid_job_requires_app_owner')
     }
-    const payload = job.payload as { projectId: string; headline: string; videoKey: string; audioKey?: string }
+    const payload = job.payload as { projectId: string; headline: string; videoKey: string; audioKey?: string; audioLength?: number }
     const resume = job.resumeFrom as { renderId: string; polls: number } | undefined
     if (!resume) {
       ctx.progress(0.05, 'Submitting five-second Shotstack render')

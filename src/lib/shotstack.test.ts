@@ -11,9 +11,9 @@ describe('Shotstack edit contract', () => {
   })
 
   it('adds narration between the headline and video tracks', () => {
-    const edit = buildShotstackEdit({ headline: 'MOVE', videoUrl: 'https://example.com/video.mp4', audioUrl: 'https://example.com/audio.mp3' })
+    const edit = buildShotstackEdit({ headline: 'MOVE', videoUrl: 'https://example.com/video.mp4', audioUrl: 'https://example.com/audio.mp3', audioLength: 3.9 })
     expect(edit.timeline.tracks).toHaveLength(3)
-    expect(edit.timeline.tracks[1].clips[0]).toMatchObject({ asset: { type: 'audio', src: 'https://example.com/audio.mp3', volume: 1 }, length: 5 })
+    expect(edit.timeline.tracks[1].clips[0]).toMatchObject({ asset: { type: 'audio', src: 'https://example.com/audio.mp3', volume: 1 }, length: 3.9 })
   })
 
   it('rejects non-public asset protocols', () => {

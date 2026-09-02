@@ -6,7 +6,7 @@ function requireHttpsUrl(value: string, error: string): string {
   return url.toString()
 }
 
-export function buildShotstackEdit(input: { headline: string; videoUrl: string; audioUrl?: string }) {
+export function buildShotstackEdit(input: { headline: string; videoUrl: string; audioUrl?: string; audioLength?: number }) {
   if (!input.headline.trim()) throw new Error('headline_required')
   const tracks: Array<{ clips: unknown[] }> = [{
     clips: [{
@@ -20,7 +20,8 @@ export function buildShotstackEdit(input: { headline: string; videoUrl: string; 
     }],
   }]
   if (input.audioUrl) {
-    tracks.push({ clips: [{ asset: { type: 'audio', src: requireHttpsUrl(input.audioUrl, 'audio_asset_must_use_https'), volume: 1 }, start: 0, length: RENDER_SECONDS }] })
+    const audioLength = Math.min(RENDER_SECONDS, Math.max(0.1, input.audioLength ?? RENDER_SECONDS))
+    tracks.push({ clips: [{ asset: { type: 'audio', src: requireHttpsUrl(input.audioUrl, 'audio_asset_must_use_https'), volume: 1 }, start: 0, length: audioLength }] })
   }
   tracks.push({ clips: [{ asset: { type: 'video', src: requireHttpsUrl(input.videoUrl, 'video_asset_must_use_https'), volume: 0 }, start: 0, length: RENDER_SECONDS, fit: 'crop' }] })
   return {

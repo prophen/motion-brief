@@ -306,7 +306,7 @@ export async function preflightShotstackAssets(
 
 export async function submitShotstackRender(
   env: Env,
-  input: { headline: string; videoKey: string; audioKey?: string },
+  input: { headline: string; videoKey: string; audioKey?: string; audioLength?: number },
 ): Promise<{ renderId: string }> {
   if (!input.headline.trim()) throw new Error('headline_required')
   if (!input.videoKey.trim()) throw new Error('stored_video_required')
@@ -314,6 +314,7 @@ export async function submitShotstackRender(
     headline: input.headline,
     videoUrl: publicAppAssetUrl(env, input.videoKey),
     audioUrl: input.audioKey ? publicAppAssetUrl(env, input.audioKey) : undefined,
+    audioLength: input.audioLength,
   })))
   const data = asObject(response?.data) ?? response
   if (typeof data?.id !== 'string') throw new Error('shotstack_submission_missing_render_id')
