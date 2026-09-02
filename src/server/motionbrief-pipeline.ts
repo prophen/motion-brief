@@ -306,13 +306,14 @@ export async function preflightShotstackAssets(
 
 export async function submitShotstackRender(
   env: Env,
-  input: { headline: string; videoKey: string; audioKey?: string; audioLength?: number },
+  input: { headline: string; videoKey: string; videoLength?: number; audioKey?: string; audioLength?: number },
 ): Promise<{ renderId: string }> {
   if (!input.headline.trim()) throw new Error('headline_required')
   if (!input.videoKey.trim()) throw new Error('stored_video_required')
   const response = asObject(await callIntegration(env, 'shotstack/render', buildShotstackEdit({
     headline: input.headline,
     videoUrl: publicAppAssetUrl(env, input.videoKey),
+    videoLength: input.videoLength,
     audioUrl: input.audioKey ? publicAppAssetUrl(env, input.audioKey) : undefined,
     audioLength: input.audioLength,
   })))

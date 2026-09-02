@@ -16,6 +16,12 @@ describe('Shotstack edit contract', () => {
     expect(edit.timeline.tracks[1].clips[0]).toMatchObject({ asset: { type: 'audio', src: 'https://example.com/audio.mp3', volume: 1 }, length: 3.9 })
   })
 
+  it('never declares clips longer than the measured source video', () => {
+    const edit = buildShotstackEdit({ headline:'MOVE', videoUrl:'https://example.com/video.mp4', videoLength:4.97, audioUrl:'https://example.com/audio.mp3', audioLength:5 })
+    expect(edit.duration).toBe(4.97)
+    expect(edit.timeline.tracks.every(track => (track.clips[0] as {length:number}).length <= 4.97)).toBe(true)
+  })
+
   it('rejects non-public asset protocols', () => {
     expect(() => buildShotstackEdit({ headline: 'MOVE', videoUrl: '/api/files/video.mp4' })).toThrow('Invalid URL')
     expect(() => buildShotstackEdit({ headline: 'MOVE', videoUrl: 'http://example.com/video.mp4' })).toThrow('video_asset_must_use_https')

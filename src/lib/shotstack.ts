@@ -6,8 +6,9 @@ function requireHttpsUrl(value: string, error: string): string {
   return url.toString()
 }
 
-export function buildShotstackEdit(input: { headline: string; videoUrl: string; audioUrl?: string; audioLength?: number }) {
+export function buildShotstackEdit(input: { headline: string; videoUrl: string; videoLength?: number; audioUrl?: string; audioLength?: number }) {
   if (!input.headline.trim()) throw new Error('headline_required')
+  const renderSeconds = Math.min(RENDER_SECONDS, Math.max(0.1, input.videoLength ?? RENDER_SECONDS))
   const tracks: Array<{ clips: unknown[] }> = [{
     clips: [{
       asset: {
@@ -16,18 +17,18 @@ export function buildShotstackEdit(input: { headline: string; videoUrl: string; 
         alignment: { horizontal: 'center', vertical: 'center' },
         stroke: { width: 2, color: '#000000' },
       },
-      start: 0, length: RENDER_SECONDS, position: 'center',
+      start: 0, length: renderSeconds, position: 'center',
     }],
   }]
   if (input.audioUrl) {
-    const audioLength = Math.min(RENDER_SECONDS, Math.max(0.1, input.audioLength ?? RENDER_SECONDS))
+    const audioLength = Math.min(renderSeconds, Math.max(0.1, input.audioLength ?? renderSeconds))
     tracks.push({ clips: [{ asset: { type: 'audio', src: requireHttpsUrl(input.audioUrl, 'audio_asset_must_use_https'), volume: 1 }, start: 0, length: audioLength }] })
   }
-  tracks.push({ clips: [{ asset: { type: 'video', src: requireHttpsUrl(input.videoUrl, 'video_asset_must_use_https'), volume: 0 }, start: 0, length: RENDER_SECONDS, fit: 'crop' }] })
+  tracks.push({ clips: [{ asset: { type: 'video', src: requireHttpsUrl(input.videoUrl, 'video_asset_must_use_https'), volume: 0 }, start: 0, length: renderSeconds, fit: 'crop' }] })
   return {
     timeline: { background: '#000000', tracks },
     output: { format: 'mp4', resolution: 'hd', aspectRatio: '9:16', fps: 25, quality: 'medium', mute: false },
-    duration: RENDER_SECONDS,
+    duration: renderSeconds,
   }
 }
 
