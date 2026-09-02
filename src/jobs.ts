@@ -41,7 +41,7 @@
 
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
-import { generateCreativeBrief, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, storeRemoteAsset, submitFalMotion, submitFalStill } from './server/motionbrief-pipeline.js'
+import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill } from './server/motionbrief-pipeline.js'
 
 export async function runJob(
   job: Job,
@@ -188,6 +188,41 @@ export async function runJob(
       signal: ctx.signal,
     })
     ctx.progress(1, 'Motion stored')
+    return { projectId: payload.projectId, asset }
+  }
+
+  if (job.type === 'motionbrief-generate-narration') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('paid_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; narration: string }
+    ctx.progress(0.1, 'Generating five-second narration')
+    const audioDataUrl = await generateNarrationDataUrl(env, payload.narration)
+    ctx.progress(0.75, 'Copying narration to durable storage')
+    try {
+      const asset = await storeNarrationDataUrl(env, {
+        projectId: payload.projectId,
+        dataUrl: audioDataUrl,
+      })
+      ctx.progress(1, 'Narration ready')
+      return { projectId: payload.projectId, asset }
+    } catch (error) {
+      return {
+        projectId: payload.projectId,
+        temporaryAudioUrl: audioDataUrl,
+        storageError: error instanceof Error ? error.message : 'asset_storage_failed',
+      }
+    }
+  }
+
+  if (job.type === 'motionbrief-store-narration') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('storage_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; dataUrl: string }
+    ctx.progress(0.2, 'Retrying durable narration storage')
+    const asset = await storeNarrationDataUrl(env, payload)
+    ctx.progress(1, 'Narration stored')
     return { projectId: payload.projectId, asset }
   }
 

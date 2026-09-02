@@ -18,6 +18,7 @@ export const motionProjectsSchema: CollectionSchema = {
     { name: 'assetManifest', storage: 'text', interpretation: 'plain' },
     { name: 'imageUrl', storage: 'text', interpretation: 'plain' },
     { name: 'videoUrl', storage: 'text', interpretation: 'plain' },
+    { name: 'audioUrl', storage: 'text', interpretation: 'plain' },
     { name: 'status', storage: 'text', interpretation: { kind: 'select', options: ['draft', 'ready', 'rendering', 'complete'] } },
   ],
   permissions: {

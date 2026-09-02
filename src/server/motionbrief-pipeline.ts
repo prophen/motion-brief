@@ -8,6 +8,9 @@ export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
 export const FAL_STILL_MAX_COST_USD = 0.04
 export const FAL_MOTION_MODEL = 'wan/v2.6/image-to-video/flash'
 export const FAL_MOTION_MAX_COST_USD = 0.25
+export const ELEVENLABS_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'
+export const ELEVENLABS_MODEL_ID = 'eleven_flash_v2_5'
+export const ELEVENLABS_OUTPUT_FORMAT = 'mp3_44100_128'
 
 export type CreativeBrief = {
   title: string
@@ -217,6 +220,29 @@ export async function pollFalMotion(env: Env, requestId: string): Promise<FalMot
   }
 }
 
+export async function generateNarrationDataUrl(env: Env, text: string): Promise<string> {
+  if (!text.trim()) throw new Error('narration_required')
+  const words = countWords(text)
+  if (words < NARRATION_TARGET_MIN_WORDS || words > NARRATION_HARD_MAX_WORDS) {
+    throw new Error('narration_must_be_8_to_13_words')
+  }
+  const response = asObject(await callIntegration(env, 'elevenlabs/generate-speech', {
+    text: text.trim(),
+    voice_id: ELEVENLABS_VOICE_ID,
+    model_id: ELEVENLABS_MODEL_ID,
+    output_format: ELEVENLABS_OUTPUT_FORMAT,
+    voice_settings: {
+      stability: 0.5,
+      similarity_boost: 0.75,
+      style: 0,
+      use_speaker_boost: true,
+    },
+  }))
+  const data = asObject(response?.data) ?? response
+  if (typeof data?.audioUrl !== 'string') throw new Error('elevenlabs_response_missing_audio')
+  return data.audioUrl
+}
+
 function safeAssetKey(projectId: string, kind: StoredAsset['kind'], mimeType: string): string {
   const extension = mimeType.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'bin'
   const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -241,12 +267,26 @@ export async function storeRemoteAsset(
   if (!downloaded.ok) throw new Error(`asset_download_failed_${downloaded.status}`)
   const mimeType = downloaded.headers.get('content-type')?.split(';')[0] || 'application/octet-stream'
   const bytes = await downloaded.arrayBuffer()
-  const key = safeAssetKey(input.projectId, input.kind, mimeType)
+  return storeAssetBytes(env, {
+    projectId: input.projectId,
+    kind: input.kind,
+    bytes,
+    mimeType,
+    sourceUrl: input.sourceUrl,
+  })
+}
+
+async function storeAssetBytes(
+  env: Env,
+  input: { projectId: string; kind: StoredAsset['kind']; bytes: ArrayBuffer; mimeType: string; sourceUrl: string },
+): Promise<StoredAsset> {
+  if (!env.APP_IDENTITY_TOKEN) throw new Error('app_identity_required_for_asset_storage')
+  const key = safeAssetKey(input.projectId, input.kind, input.mimeType)
   const url = new URL('https://platform.invalid/internal/files/upload')
   url.searchParams.set('scope', 'app')
   url.searchParams.set('uploadKey', key)
   const form = new FormData()
-  form.append('file', new Blob([bytes], { type: mimeType }), key.split('/').at(-1) ?? 'asset')
+  form.append('file', new Blob([input.bytes], { type: input.mimeType }), key.split('/').at(-1) ?? 'asset')
   form.append('name', key.split('/').at(-1) ?? 'asset')
 
   const uploaded = await platformWorkerFetch(env, new Request(url, {
@@ -269,8 +309,27 @@ export async function storeRemoteAsset(
     key: result.key,
     // Platform-service URLs are not browser-facing; route through this app.
     url: appFileUrl(result.key),
-    mimeType,
+    mimeType: input.mimeType,
     sourceUrl: input.sourceUrl,
     storedAt: new Date().toISOString(),
   }
+}
+
+export async function storeNarrationDataUrl(
+  env: Env,
+  input: { projectId: string; dataUrl: string },
+): Promise<StoredAsset> {
+  requirePaidIntegrations(env)
+  if (!env.APP_IDENTITY_TOKEN) throw new Error('app_identity_required_for_asset_storage')
+  const match = /^data:([^;,]+);base64,(.+)$/s.exec(input.dataUrl)
+  if (!match) throw new Error('narration_audio_data_url_invalid')
+  const binary = atob(match[2])
+  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0)).buffer
+  return storeAssetBytes(env, {
+    projectId: input.projectId,
+    kind: 'audio',
+    bytes,
+    mimeType: match[1],
+    sourceUrl: 'elevenlabs:data-url',
+  })
 }
