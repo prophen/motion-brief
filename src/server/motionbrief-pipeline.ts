@@ -178,17 +178,17 @@ export async function pollFalStill(env: Env, requestId: string): Promise<FalStil
 
 export async function submitFalMotion(
   env: Env,
-  input: { prompt: string; imageKey: string },
+  input: { prompt: string; imageUrl: string },
 ): Promise<{ requestId: string }> {
   if (!input.prompt.trim()) throw new Error('motion_prompt_required')
-  if (!input.imageKey.trim()) throw new Error('stored_image_required')
-  const imageUrl = `https://${env.APP_NAME}.app.space${appFileUrl(input.imageKey)}`
+  const imageUrl = new URL(input.imageUrl)
+  if (imageUrl.protocol !== 'https:') throw new Error('motion_image_must_use_https')
   const response = asObject(await callIntegration(env, 'fal/run-model', {
     model_id: FAL_MOTION_MODEL,
     maxCostUsd: FAL_MOTION_MAX_COST_USD,
     input: {
       prompt: input.prompt.trim(),
-      image_url: imageUrl,
+      image_url: imageUrl.toString(),
       resolution: '720p',
       duration: '5',
       generate_audio: false,

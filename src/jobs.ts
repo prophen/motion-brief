@@ -135,13 +135,13 @@ export async function runJob(
     if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
       throw new Error('paid_job_requires_app_owner')
     }
-    const payload = job.payload as { projectId: string; motionPrompt: string; imageKey: string }
+    const payload = job.payload as { projectId: string; motionPrompt: string; imageUrl: string }
     const resume = job.resumeFrom as { requestId: string; polls: number } | undefined
     if (!resume) {
       ctx.progress(0.05, 'Submitting one capped five-second FAL video')
       const submission = await submitFalMotion(env, {
         prompt: payload.motionPrompt,
-        imageKey: payload.imageKey,
+        imageUrl: payload.imageUrl,
       })
       ctx.progress(0.2, 'Motion queued at FAL')
       ctx.continue({ requestId: submission.requestId, polls: 0 }, { afterMs: 2500 })
