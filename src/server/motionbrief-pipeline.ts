@@ -42,6 +42,10 @@ export type FalMotionPoll =
   | { status: 'pending'; queuePosition?: number }
   | { status: 'failed'; error: string }
   | { status: 'complete'; videoUrl: string }
+export type ShotstackPoll =
+  | { status: 'pending'; statusLabel: string }
+  | { status: 'failed'; error: string }
+  | { status: 'complete'; renderUrl: string; costUsd: number }
 
 function requirePaidIntegrations(env: Env): void {
   if (env.MOTIONBRIEF_PAID_INTEGRATIONS_ENABLED !== 'true') {
@@ -242,6 +246,71 @@ export async function generateNarrationDataUrl(env: Env, text: string, voiceId: 
   const data = asObject(response?.data) ?? response
   if (typeof data?.audioUrl !== 'string') throw new Error('elevenlabs_response_missing_audio')
   return data.audioUrl
+}
+
+function publicAppAssetUrl(env: Env, key: string): string {
+  return `https://${env.APP_NAME}.app.space${appFileUrl(key)}`
+}
+
+export async function submitShotstackRender(
+  env: Env,
+  input: { headline: string; videoKey: string; audioKey?: string },
+): Promise<{ renderId: string }> {
+  if (!input.headline.trim()) throw new Error('headline_required')
+  if (!input.videoKey.trim()) throw new Error('stored_video_required')
+  const tracks: Array<{ clips: unknown[] }> = [
+    {
+      clips: [{
+        asset: {
+          type: 'text',
+          text: input.headline.trim(),
+          width: 900,
+          height: 300,
+          font: { family: 'Open Sans', color: '#ffffff', size: 72, weight: 700, lineHeight: 1 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          stroke: { width: 2, color: '#000000' },
+        },
+        start: 0,
+        length: 5,
+        position: 'center',
+      }],
+    },
+  ]
+  if (input.audioKey) {
+    tracks.push({ clips: [{
+      asset: { type: 'audio', src: publicAppAssetUrl(env, input.audioKey), volume: 1 },
+      start: 0,
+      length: 5,
+    }] })
+  }
+  tracks.push({ clips: [{
+    asset: { type: 'video', src: publicAppAssetUrl(env, input.videoKey), volume: 0 },
+    start: 0,
+    length: 5,
+    fit: 'crop',
+  }] })
+
+  const response = asObject(await callIntegration(env, 'shotstack/render', {
+    timeline: { background: '#000000', tracks },
+    output: { format: 'mp4', resolution: 'hd', aspectRatio: '9:16', fps: 25, quality: 'medium', mute: false },
+    duration: 5,
+  }))
+  const data = asObject(response?.data) ?? response
+  if (typeof data?.id !== 'string') throw new Error('shotstack_submission_missing_render_id')
+  return { renderId: data.id }
+}
+
+export async function pollShotstackRender(env: Env, renderId: string): Promise<ShotstackPoll> {
+  const response = asObject(await callIntegration(env, 'shotstack/get-render', { id: renderId }))
+  const data = asObject(response?.data) ?? response
+  const status = typeof data?.status === 'string' ? data.status.toLowerCase() : 'unknown'
+  if (['failed', 'error', 'cancelled', 'canceled'].includes(status)) {
+    return { status: 'failed', error: typeof data?.error === 'string' ? data.error : 'Shotstack render failed' }
+  }
+  if (status === 'done' && typeof data?.url === 'string') {
+    return { status: 'complete', renderUrl: data.url, costUsd: typeof data?.costUsd === 'number' ? data.costUsd : 0 }
+  }
+  return { status: 'pending', statusLabel: status }
 }
 
 function safeAssetKey(projectId: string, kind: StoredAsset['kind'], mimeType: string): string {
