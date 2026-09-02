@@ -122,8 +122,20 @@ async function callIntegration(env: Env, endpoint: string, body: unknown): Promi
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.APP_OWNER_JWT}` },
     body: JSON.stringify(body),
   })
-  if (!response.ok) throw new Error(`${endpoint.replaceAll('/', '_')}_failed_${response.status}`)
-  return await response.json()
+  const responseText = await response.text()
+  if (!response.ok) {
+    let detail = ''
+    try {
+      const errorBody = asObject(JSON.parse(responseText))
+      const candidate = errorBody?.error ?? errorBody?.message ?? errorBody?.detail
+      if (typeof candidate === 'string') detail = candidate.replace(/\s+/g, ' ').slice(0, 240)
+    } catch {
+      detail = responseText.replace(/\s+/g, ' ').slice(0, 240)
+    }
+    const suffix = detail ? `_${detail}` : ''
+    throw new Error(`${endpoint.replaceAll('/', '_')}_failed_${response.status}${suffix}`)
+  }
+  return JSON.parse(responseText)
 }
 
 export async function submitFalStill(env: Env, prompt: string): Promise<FalStillSubmission> {
