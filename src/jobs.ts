@@ -57,6 +57,9 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-generate-brief') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('paid_job_requires_app_owner')
+    }
     const payload = job.payload as { projectId: string; prompt: string }
     ctx.progress(0.05, 'Validating paid-call gate')
     const brief = await generateCreativeBrief(env, payload.prompt)

@@ -73,7 +73,7 @@ export async function generateCreativeBrief(
   requirePaidIntegrations(env)
   if (!creatorPrompt.trim()) throw new Error('creator_prompt_required')
 
-  const response = await apiWorkerFetch(env, '/api/integrations/openai/chat-completions', {
+  const response = await apiWorkerFetch(env, '/api/integrations/openai/chat-completion', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

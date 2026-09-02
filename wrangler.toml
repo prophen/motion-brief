@@ -29,6 +29,8 @@ run_worker_first = ["/api/*", "/ws/*", "/internal/*", "/v1/*", "/_deepspace/*", 
 [vars]
 DEEPSPACE_APP_ID = "app_01M1GDZ6EE09TW659RKG9V54JR"
 APP_NAME = "motion-brief"
+# Owner-only production brief jobs remain additionally guarded in src/jobs.ts.
+MOTIONBRIEF_PAID_INTEGRATIONS_ENABLED = "true"
 
 [[migrations]]
 tag = "v1"
