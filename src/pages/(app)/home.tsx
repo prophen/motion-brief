@@ -19,15 +19,24 @@ export default function HomePage() {
   const [draft,setDraft] = useState(seed), [recordId,setRecordId] = useState<string|null>(null)
   const [saving,setSaving] = useState(false), [queuing,setQueuing] = useState(false)
   const appliedJob = useRef<string|null>(null)
-  const stored = records[0], project = recordId ? draft : stored?.data ?? draft
+  const loadedRecord = useRef<string|null>(null)
+  const stored = records[0], project = draft
   const job = useMemo(() => jobs.find(j => j.type === 'motionbrief-generate-brief' && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId === recordId)), [jobs,recordId])
-  const set = <K extends keyof Project>(key:K,value:Project[K]) => { if (!recordId && stored) setRecordId(stored.recordId); setDraft(current => ({...(stored?.data ?? current),[key]:value})) }
+  const set = <K extends keyof Project>(key:K,value:Project[K]) => setDraft(current => ({...current,[key]:value}))
+
+  useEffect(()=>{
+    if(!stored || loadedRecord.current===stored.recordId) return
+    loadedRecord.current=stored.recordId
+    setRecordId(stored.recordId)
+    setDraft({...seed,...stored.data})
+  },[stored])
 
   async function save() {
     if (!isSignedIn) return toast.info('Sign in to save','The studio preview is open; saving requires an account.')
-    if (!draft.prompt.trim()) return toast.error('Prompt required','Add the creator prompt before saving the brief.')
+    const values = project
+    if (!values.prompt.trim()) return toast.error('Prompt required','Add the creator prompt before saving the brief.')
     setSaving(true)
-    try { if(recordId) await putConfirmed(recordId,{...draft,status:'ready'}); else setRecordId(await createConfirmed({...draft,status:'ready'})); setDraft(v=>({...v,status:'ready'})); toast.success('Brief saved','Your editable production brief is ready.') }
+    try { if(recordId) await putConfirmed(recordId,{...values,status:'ready'}); else setRecordId(await createConfirmed({...values,status:'ready'})); setDraft({...values,status:'ready'}); toast.success('Brief saved','Your editable production brief is ready.') }
     catch(e){ toast.error('Could not save',e instanceof Error?e.message:'Please try again.') } finally { setSaving(false) }
   }
   async function preview(){ if(!isSignedIn||!recordId) return toast.info('Save first','Sign in and save the brief before previewing.'); setQueuing(true); try{ await enqueue('motionbrief-preview',{projectId:recordId,headline:draft.headline},{maxAttempts:1}); toast.success('Preview queued','Zero-cost orchestration only; no paid integrations called.') }catch(e){toast.error('Could not queue',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
