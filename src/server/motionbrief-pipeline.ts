@@ -6,6 +6,8 @@ export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
 export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
 export const FAL_STILL_MAX_COST_USD = 0.04
+export const FAL_MOTION_MODEL = 'luma/agent/ray/v3.2/image-to-video'
+export const FAL_MOTION_MAX_COST_USD = 0.5
 
 export type CreativeBrief = {
   title: string
@@ -33,6 +35,10 @@ export type FalStillPoll =
   | { status: 'pending'; queuePosition?: number }
   | { status: 'failed'; error: string }
   | { status: 'complete'; imageUrl: string }
+export type FalMotionPoll =
+  | { status: 'pending'; queuePosition?: number }
+  | { status: 'failed'; error: string }
+  | { status: 'complete'; videoUrl: string }
 
 function requirePaidIntegrations(env: Env): void {
   if (env.MOTIONBRIEF_PAID_INTEGRATIONS_ENABLED !== 'true') {
@@ -152,6 +158,46 @@ export async function pollFalStill(env: Env, requestId: string): Promise<FalStil
   const images = output?.images
   const image = Array.isArray(images) ? asObject(images[0]) : null
   if (typeof image?.url === 'string') return { status: 'complete', imageUrl: image.url }
+  return {
+    status: 'pending',
+    queuePosition: typeof data?.queuePosition === 'number' ? data.queuePosition : undefined,
+  }
+}
+
+export async function submitFalMotion(
+  env: Env,
+  input: { prompt: string; imageKey: string },
+): Promise<{ requestId: string }> {
+  if (!input.prompt.trim()) throw new Error('motion_prompt_required')
+  if (!input.imageKey.trim()) throw new Error('stored_image_required')
+  const imageUrl = `https://${env.APP_NAME}.app.space${appFileUrl(input.imageKey)}`
+  const response = asObject(await callIntegration(env, 'fal/run-model', {
+    model_id: FAL_MOTION_MODEL,
+    maxCostUsd: FAL_MOTION_MAX_COST_USD,
+    input: {
+      prompt: input.prompt.trim(),
+      image_url: imageUrl,
+      aspect_ratio: '9:16',
+      resolution: '540p',
+      duration: '5s',
+      loop: false,
+    },
+  }))
+  const data = asObject(response?.data) ?? response
+  const requestId = data?.jobId ?? data?.request_id
+  if (typeof requestId !== 'string') throw new Error('fal_motion_submission_missing_job_id')
+  return { requestId }
+}
+
+export async function pollFalMotion(env: Env, requestId: string): Promise<FalMotionPoll> {
+  const response = asObject(await callIntegration(env, 'fal/get-result', { request_id: requestId }))
+  const data = asObject(response?.data) ?? response
+  const status = typeof data?.status === 'string' ? data.status.toLowerCase() : ''
+  if (['failed', 'error', 'cancelled', 'canceled'].includes(status)) {
+    return { status: 'failed', error: typeof data?.error === 'string' ? data.error : 'FAL motion generation failed' }
+  }
+  const video = asObject(asObject(data?.output)?.video)
+  if (typeof video?.url === 'string') return { status: 'complete', videoUrl: video.url }
   return {
     status: 'pending',
     queuePosition: typeof data?.queuePosition === 'number' ? data.queuePosition : undefined,

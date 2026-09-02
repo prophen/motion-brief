@@ -41,7 +41,7 @@
 
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
-import { generateCreativeBrief, MOTIONBRIEF_PIPELINE_VERSION, pollFalStill, storeRemoteAsset, submitFalStill } from './server/motionbrief-pipeline.js'
+import { generateCreativeBrief, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, storeRemoteAsset, submitFalMotion, submitFalStill } from './server/motionbrief-pipeline.js'
 
 export async function runJob(
   job: Job,
@@ -128,6 +128,66 @@ export async function runJob(
       signal: ctx.signal,
     })
     ctx.progress(1, 'Still image stored')
+    return { projectId: payload.projectId, asset }
+  }
+
+  if (job.type === 'motionbrief-generate-motion') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('paid_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; motionPrompt: string; imageKey: string }
+    const resume = job.resumeFrom as { requestId: string; polls: number } | undefined
+    if (!resume) {
+      ctx.progress(0.05, 'Submitting one capped five-second FAL video')
+      const submission = await submitFalMotion(env, {
+        prompt: payload.motionPrompt,
+        imageKey: payload.imageKey,
+      })
+      ctx.progress(0.2, 'Motion queued at FAL')
+      ctx.continue({ requestId: submission.requestId, polls: 0 }, { afterMs: 2500 })
+      return
+    }
+    if (resume.polls >= 144) throw new Error('fal_motion_poll_timeout')
+    const polled = await pollFalMotion(env, resume.requestId)
+    if (polled.status === 'failed') throw new Error(polled.error)
+    if (polled.status === 'pending') {
+      const detail = polled.queuePosition === undefined ? 'Animating still' : `Queue position ${polled.queuePosition}`
+      ctx.progress(Math.min(0.22 + resume.polls * 0.004, 0.88), detail)
+      ctx.continue({ requestId: resume.requestId, polls: resume.polls + 1 }, { afterMs: 2500 })
+      return
+    }
+    ctx.progress(0.9, 'Copying video to durable storage')
+    try {
+      const asset = await storeRemoteAsset(env, {
+        projectId: payload.projectId,
+        kind: 'video',
+        sourceUrl: polled.videoUrl,
+        signal: ctx.signal,
+      })
+      ctx.progress(1, 'Motion ready')
+      return { projectId: payload.projectId, asset }
+    } catch (error) {
+      return {
+        projectId: payload.projectId,
+        temporaryVideoUrl: polled.videoUrl,
+        storageError: error instanceof Error ? error.message : 'asset_storage_failed',
+      }
+    }
+  }
+
+  if (job.type === 'motionbrief-store-motion') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('storage_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; sourceUrl: string }
+    ctx.progress(0.2, 'Retrying durable video storage')
+    const asset = await storeRemoteAsset(env, {
+      projectId: payload.projectId,
+      kind: 'video',
+      sourceUrl: payload.sourceUrl,
+      signal: ctx.signal,
+    })
+    ctx.progress(1, 'Motion stored')
     return { projectId: payload.projectId, asset }
   }
 
