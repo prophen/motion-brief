@@ -1,5 +1,6 @@
 import { apiWorkerFetch, platformWorkerFetch } from 'deepspace/worker'
 import type { Env } from '../../worker.js'
+import { countWords, NARRATION_HARD_MAX_WORDS, NARRATION_TARGET_MIN_WORDS } from '../lib/narration.js'
 
 export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
@@ -63,6 +64,10 @@ function parseCreativeBrief(content: string): CreativeBrief {
     if (typeof field !== 'string' || !field.trim()) throw new Error(`openai_brief_invalid_${key}`)
     result[key] = field.trim()
   }
+  const narrationWords = countWords(result.narration)
+  if (narrationWords < NARRATION_TARGET_MIN_WORDS || narrationWords > NARRATION_HARD_MAX_WORDS) {
+    throw new Error('openai_brief_narration_must_be_8_to_13_words')
+  }
   return result
 }
 
@@ -86,7 +91,7 @@ export async function generateCreativeBrief(
       messages: [
         {
           role: 'system',
-          content: 'You are a creative director for short-form vertical video. Return only valid JSON with these non-empty string fields: title, audience, objective, visualDirection, motionDirection, narration, headline, stillPrompt, motionPrompt. Keep narration under 55 words and headline under 8 words.',
+          content: 'You are a creative director for a five-second vertical video. Return only valid JSON with these non-empty string fields: title, audience, objective, visualDirection, motionDirection, narration, headline, stillPrompt, motionPrompt. Narration must be one short sentence of 8 to 11 words, never more than 13 words, and must not repeat the headline. Keep the headline under 8 words.',
         },
         { role: 'user', content: creatorPrompt.trim() },
       ],
