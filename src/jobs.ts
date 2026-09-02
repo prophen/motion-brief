@@ -42,6 +42,7 @@
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
 import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
+import { MOTION_GENERATION_ENABLED } from './lib/pipeline-config.js'
 
 export async function runJob(
   job: Job,
@@ -132,6 +133,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-generate-motion') {
+    if (!MOTION_GENERATION_ENABLED) throw new Error('motion_generation_paused_pending_deepspace')
     if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
       throw new Error('paid_job_requires_app_owner')
     }

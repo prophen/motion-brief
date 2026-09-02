@@ -2,6 +2,8 @@ import { apiWorkerFetch, platformWorkerFetch } from 'deepspace/worker'
 import type { Env } from '../../worker.js'
 import { countWords, NARRATION_HARD_MAX_WORDS, NARRATION_TARGET_MIN_WORDS } from '../lib/narration.js'
 import { DEFAULT_MOTIONBRIEF_VOICE_ID, isMotionBriefVoiceId } from '../lib/voices.js'
+import { decodeBase64DataUrl, type StoredAsset } from '../lib/assets.js'
+import { buildShotstackEdit } from '../lib/shotstack.js'
 
 export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
@@ -24,14 +26,7 @@ export type CreativeBrief = {
   motionPrompt: string
 }
 
-export type StoredAsset = {
-  kind: 'image' | 'video' | 'audio' | 'render'
-  key: string
-  url: string
-  mimeType: string
-  sourceUrl: string
-  storedAt: string
-}
+export type { StoredAsset } from '../lib/assets.js'
 
 export type FalStillSubmission = { requestId: string }
 export type FalStillPoll =
@@ -258,43 +253,11 @@ export async function submitShotstackRender(
 ): Promise<{ renderId: string }> {
   if (!input.headline.trim()) throw new Error('headline_required')
   if (!input.videoKey.trim()) throw new Error('stored_video_required')
-  const tracks: Array<{ clips: unknown[] }> = [
-    {
-      clips: [{
-        asset: {
-          type: 'text',
-          text: input.headline.trim(),
-          width: 900,
-          height: 300,
-          font: { family: 'Open Sans', color: '#ffffff', size: 72, weight: 700, lineHeight: 1 },
-          alignment: { horizontal: 'center', vertical: 'center' },
-          stroke: { width: 2, color: '#000000' },
-        },
-        start: 0,
-        length: 5,
-        position: 'center',
-      }],
-    },
-  ]
-  if (input.audioKey) {
-    tracks.push({ clips: [{
-      asset: { type: 'audio', src: publicAppAssetUrl(env, input.audioKey), volume: 1 },
-      start: 0,
-      length: 5,
-    }] })
-  }
-  tracks.push({ clips: [{
-    asset: { type: 'video', src: publicAppAssetUrl(env, input.videoKey), volume: 0 },
-    start: 0,
-    length: 5,
-    fit: 'crop',
-  }] })
-
-  const response = asObject(await callIntegration(env, 'shotstack/render', {
-    timeline: { background: '#000000', tracks },
-    output: { format: 'mp4', resolution: 'hd', aspectRatio: '9:16', fps: 25, quality: 'medium', mute: false },
-    duration: 5,
-  }))
+  const response = asObject(await callIntegration(env, 'shotstack/render', buildShotstackEdit({
+    headline: input.headline,
+    videoUrl: publicAppAssetUrl(env, input.videoKey),
+    audioUrl: input.audioKey ? publicAppAssetUrl(env, input.audioKey) : undefined,
+  })))
   const data = asObject(response?.data) ?? response
   if (typeof data?.id !== 'string') throw new Error('shotstack_submission_missing_render_id')
   return { renderId: data.id }
@@ -391,15 +354,12 @@ export async function storeNarrationDataUrl(
 ): Promise<StoredAsset> {
   requirePaidIntegrations(env)
   if (!env.APP_IDENTITY_TOKEN) throw new Error('app_identity_required_for_asset_storage')
-  const match = /^data:([^;,]+);base64,(.+)$/s.exec(input.dataUrl)
-  if (!match) throw new Error('narration_audio_data_url_invalid')
-  const binary = atob(match[2])
-  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0)).buffer
+  const { mimeType, bytes } = decodeBase64DataUrl(input.dataUrl)
   return storeAssetBytes(env, {
     projectId: input.projectId,
     kind: 'audio',
     bytes,
-    mimeType: match[1],
+    mimeType,
     sourceUrl: 'elevenlabs:data-url',
   })
 }
