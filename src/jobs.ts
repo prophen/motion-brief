@@ -195,9 +195,9 @@ export async function runJob(
     if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
       throw new Error('paid_job_requires_app_owner')
     }
-    const payload = job.payload as { projectId: string; narration: string }
+    const payload = job.payload as { projectId: string; narration: string; voiceId: string }
     ctx.progress(0.1, 'Generating five-second narration')
-    const audioDataUrl = await generateNarrationDataUrl(env, payload.narration)
+    const audioDataUrl = await generateNarrationDataUrl(env, payload.narration, payload.voiceId)
     ctx.progress(0.75, 'Copying narration to durable storage')
     try {
       const asset = await storeNarrationDataUrl(env, {

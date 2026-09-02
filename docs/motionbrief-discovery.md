@@ -35,6 +35,8 @@ Output formats: MP3 at `22050/32`, or `44100/64|96|128|192`; PCM at `16000|22050
 
 `elevenlabs/list-voices` costs **$0.0013/request** (not free) and returns voice IDs/names plus category, gender, age, accent, use case, preview URL, and lifecycle fields. Do not call it during free discovery.
 
+One approved paid voice-list request was run on 2026-09-02. MotionBrief curates five non-legacy premade choices rather than loading the full catalog at runtime: George (`JBFqnCBsd6RMkjVDRZzb`, warm British storyteller), Sarah (`EXAVITQu4vr4xnSDxMaL`, warm confident professional), Liam (`TX3LPaxmHKxFdv7VOQHJ`, energetic social creator), River (`SAz9YHcvj6GT2YYXdXww`, relaxed neutral), and Jessica (`cgSgspJ2msm6clMCkdW9`, playful bright warmth).
+
 ### Shotstack — final MP4
 
 `shotstack/render` is asynchronous and `per_actual_cost`, billed per rendered second. Request requires `{ timeline: object, output: object, duration: number > 0 }`, with optional `merge: [{ find, replace }]` and URI `callback`. Returns `{ id, status, message }`. The DeepSpace catalog intentionally leaves nested `timeline` and `output` open-ended, so it does **not** confirm the precise Shotstack clip, audio, title/HTML, 9:16 resolution, codec, or MP4 fields. These must be validated against Shotstack's accepted edit payload before implementation; do not infer them from the empty example.

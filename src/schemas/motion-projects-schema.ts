@@ -10,6 +10,7 @@ export const motionProjectsSchema: CollectionSchema = {
     { name: 'visualDirection', storage: 'text', interpretation: 'plain' },
     { name: 'motionDirection', storage: 'text', interpretation: 'plain' },
     { name: 'narration', storage: 'text', interpretation: 'plain' },
+    { name: 'voiceId', storage: 'text', interpretation: 'plain' },
     { name: 'headline', storage: 'text', interpretation: 'plain' },
     { name: 'stillPrompt', storage: 'text', interpretation: 'plain' },
     { name: 'motionPrompt', storage: 'text', interpretation: 'plain' },
