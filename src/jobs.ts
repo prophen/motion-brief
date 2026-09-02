@@ -41,7 +41,7 @@
 
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
-import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, runProviderDiagnostic, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
+import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, preflightShotstackAssets, runProviderDiagnostic, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
 import { MOTION_GENERATION_ENABLED } from './lib/pipeline-config.js'
 import { buildShotstackTextOnlySmokeEdit } from './lib/shotstack.js'
 
@@ -77,6 +77,15 @@ export async function runJob(
     })
     ctx.progress(1, diagnostic.ok ? 'Shotstack accepted the control' : 'Shotstack rejected the control')
     return { diagnostic, billedDurationSeconds: 1 }
+  }
+
+  if (job.type === 'motionbrief-preflight-render') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) throw new Error('preflight_job_requires_app_owner')
+    const payload = job.payload as { projectId:string; videoKey:string; audioKey?:string }
+    ctx.progress(0.2,'Checking public render assets')
+    const preflight=await preflightShotstackAssets(env,{videoKey:payload.videoKey,audioKey:payload.audioKey,signal:ctx.signal})
+    ctx.progress(1,preflight.ok?'Render assets passed':'Render assets failed')
+    return {projectId:payload.projectId,preflight}
   }
 
   if (job.type === 'motionbrief-preview') {

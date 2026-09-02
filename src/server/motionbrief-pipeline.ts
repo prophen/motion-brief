@@ -5,6 +5,8 @@ import { DEFAULT_MOTIONBRIEF_VOICE_ID, isMotionBriefVoiceId } from '../lib/voice
 import { decodeBase64DataUrl, type StoredAsset } from '../lib/assets.js'
 import { buildShotstackEdit } from '../lib/shotstack.js'
 import { sanitizeDiagnosticBody } from '../lib/provider-diagnostics.js'
+import { formatIntegrationError } from '../lib/integration-errors.js'
+import { validateAssetResponse, type AssetPreflight, type RenderPreflight } from '../lib/render-preflight.js'
 
 export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
@@ -126,18 +128,7 @@ async function callIntegration(env: Env, endpoint: string, body: unknown): Promi
     body: JSON.stringify(body),
   })
   const responseText = await response.text()
-  if (!response.ok) {
-    let detail = ''
-    try {
-      const errorBody = asObject(JSON.parse(responseText))
-      const candidate = errorBody?.error ?? errorBody?.message ?? errorBody?.detail
-      if (typeof candidate === 'string') detail = candidate.replace(/\s+/g, ' ').slice(0, 240)
-    } catch {
-      detail = responseText.replace(/\s+/g, ' ').slice(0, 240)
-    }
-    const suffix = detail ? `_${detail}` : ''
-    throw new Error(`${endpoint.replaceAll('/', '_')}_failed_${response.status}${suffix}`)
-  }
+  if (!response.ok) throw new Error(formatIntegrationError(endpoint, response.status, responseText))
   return JSON.parse(responseText)
 }
 
@@ -285,6 +276,32 @@ export async function generateNarrationDataUrl(env: Env, text: string, voiceId: 
 
 function publicAppAssetUrl(env: Env, key: string): string {
   return `https://${env.APP_NAME}.app.space${appFileUrl(key)}`
+}
+
+async function inspectPublicAsset(kind: AssetPreflight['kind'], url: string, signal?: AbortSignal): Promise<AssetPreflight> {
+  try {
+    const response = await fetch(url, { method:'GET', headers:{ Range:'bytes=0-0' }, redirect:'follow', signal })
+    const contentRange = response.headers.get('content-range')
+    const totalFromRange = contentRange?.match(/\/(\d+)$/)?.[1]
+    return validateAssetResponse({
+      kind, url, status:response.status,
+      contentType:response.headers.get('content-type')?.split(';')[0]??'',
+      contentLength:totalFromRange ? Number(totalFromRange) : Number(response.headers.get('content-length')) || null,
+      acceptsRanges:response.status===206||response.headers.get('accept-ranges')==='bytes',
+    })
+  } catch (error) {
+    return { kind, url, ok:false, status:0, contentType:'', contentLength:null, acceptsRanges:false, error:error instanceof Error?error.message:'asset_fetch_failed' }
+  }
+}
+
+export async function preflightShotstackAssets(
+  env: Env,
+  input: { videoKey: string; audioKey?: string; signal?: AbortSignal },
+): Promise<RenderPreflight> {
+  const checks = [inspectPublicAsset('video',publicAppAssetUrl(env,input.videoKey),input.signal)]
+  if(input.audioKey) checks.push(inspectPublicAsset('audio',publicAppAssetUrl(env,input.audioKey),input.signal))
+  const assets=await Promise.all(checks)
+  return {ok:assets.every(asset=>asset.ok),assets,checkedAt:new Date().toISOString()}
 }
 
 export async function submitShotstackRender(
