@@ -57,6 +57,11 @@ import { FINAL_RENDER_ENABLED } from '../../lib/pipeline-config'
 import type { RenderPreflight } from '../../lib/render-preflight'
 import { readMediaDuration } from '../../lib/video-upload'
 import { MOTIONBRIEF_VOICES } from '../../lib/voices'
+import {
+  clearCreatorPromptDraft,
+  readCreatorPromptDraft,
+  writeCreatorPromptDraft,
+} from '../../lib/studio-draft'
 
 type PipelineResult = {
   projectId: string
@@ -247,7 +252,10 @@ export default function HomePage() {
       if (loadedRecord.current === 'new') return
       loadedRecord.current = 'new'
       setRecordId(null)
-      setDraft(freshMotionProject())
+      setDraft({
+        ...freshMotionProject(),
+        prompt: readCreatorPromptDraft(window.sessionStorage),
+      })
       return
     }
     if (!stored || loadedRecord.current === stored.recordId) return
@@ -260,6 +268,13 @@ export default function HomePage() {
       assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]'),
     })
   }, [creatingNew, stored])
+
+  // OAuth may leave and reload the app. Keep an unsaved new-project prompt in
+  // this tab so the auth round trip does not discard what the creator typed.
+  useEffect(() => {
+    if (!creatingNew || recordId) return
+    writeCreatorPromptDraft(window.sessionStorage, draft.prompt)
+  }, [creatingNew, draft.prompt, recordId])
 
   async function save() {
     if (!isSignedIn)
@@ -307,6 +322,7 @@ export default function HomePage() {
         loadedRecord.current = createdId
         setSearchParams({ project: createdId }, { replace: true })
       }
+      clearCreatorPromptDraft(window.sessionStorage)
       setDraft({ ...values, status: savedStatus })
       toast.success(
         'Brief saved',
@@ -748,10 +764,7 @@ export default function HomePage() {
 
   useEffect(() => {
     for (const job of jobs) {
-      if (
-        job.status !== 'failed' ||
-        !jobsStartedHere.current.delete(job.id)
-      )
+      if (job.status !== 'failed' || !jobsStartedHere.current.delete(job.id))
         continue
       toast.error(
         'Generation stopped',
@@ -868,8 +881,8 @@ export default function HomePage() {
               {draft.title || 'Untitled creative brief'}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Work through one focused stage at a time. Signed-in guests get
-              one generation per paid stage.
+              Work through one focused stage at a time. Signed-in guests get one
+              generation per paid stage.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
