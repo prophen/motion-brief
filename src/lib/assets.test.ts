@@ -11,9 +11,13 @@ describe('asset manifests', () => {
   })
 
   it('removes assets inherited from another project', () => {
-    const own = { ...image, key: 'motionbrief/project-new/image-new.jpg' }
-    const inherited = { ...updated, key: 'motionbrief/project-old/render-old.mp4', kind: 'render' as const }
+    const own = { ...image, key: 'apps/app-id/canonical-image.jpg', projectId: 'project-new' }
+    const inherited = { ...updated, key: 'apps/app-id/canonical-render.mp4', projectId: 'project-old', kind: 'render' as const }
     expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([inherited, own]), 'project-new'))).toEqual([own])
+  })
+
+  it('keeps legacy canonical assets that predate project metadata', () => {
+    expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([image]), 'project-new'))).toEqual([image])
   })
 
   it('upserts without duplicating an asset and finds the latest kind', () => {

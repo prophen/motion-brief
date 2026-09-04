@@ -408,6 +408,7 @@ async function storeAssetBytes(
   }
   return {
     kind: input.kind,
+    projectId: input.projectId,
     key: result.key,
     // Platform-service URLs are not browser-facing; route through this app.
     url: appFileUrl(result.key),

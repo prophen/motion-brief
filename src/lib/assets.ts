@@ -1,5 +1,6 @@
 export type StoredAsset = {
   kind: 'image' | 'video' | 'audio' | 'render'
+  projectId?: string
   key: string
   url: string
   mimeType: string
@@ -43,8 +44,7 @@ export function normalizeAssetManifest(value: string): string {
 }
 
 export function assetBelongsToProject(asset: StoredAsset, projectId: string): boolean {
-  const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, '-')
-  return asset.key.startsWith(`motionbrief/${safeProjectId}/`)
+  return !asset.projectId || asset.projectId === projectId
 }
 
 export function normalizeProjectAssetManifest(value: string, projectId: string): string {
