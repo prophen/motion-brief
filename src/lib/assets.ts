@@ -88,6 +88,16 @@ export function removeAssetKind(
   )
 }
 
+export function projectAssetKeys(value: string, projectId: string): string[] {
+  return [
+    ...new Set(
+      parseAssetManifest(value)
+        .filter((asset) => assetBelongsToProject(asset, projectId))
+        .map((asset) => asset.key),
+    ),
+  ]
+}
+
 export function latestStoredAsset(
   value: string,
   kind: StoredAsset['kind'],

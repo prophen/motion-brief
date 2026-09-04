@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { useAuthProfileReady, useMutations, useQuery } from 'deepspace'
+import {
+  useAuthProfileReady,
+  useMutations,
+  useQuery,
+  useR2Files,
+} from 'deepspace'
 import { FileText, FolderOpen, Plus, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -13,6 +18,7 @@ import {
   displayedProjectStatus,
   type MotionProject,
 } from '../../lib/motion-project'
+import { projectAssetKeys } from '../../lib/assets'
 
 const statusLabel: Record<MotionProject['status'], string> = {
   draft: 'Draft',
@@ -30,22 +36,44 @@ export default function ProjectsPage() {
   })
   const { removeConfirmed, ready } =
     useMutations<MotionProject>('motion-projects')
+  const { deleteFile } = useR2Files({ scope: 'app' })
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const toast = useToast()
 
-  async function removeProject(recordId: string, title: string) {
+  async function removeProject(
+    recordId: string,
+    title: string,
+    assetManifest: string,
+  ) {
+    const assetKeys = projectAssetKeys(assetManifest, recordId)
+    const mediaDescription =
+      assetKeys.length === 0
+        ? 'This permanently deletes the project record.'
+        : `This permanently deletes the project and ${assetKeys.length} stored media ${assetKeys.length === 1 ? 'file' : 'files'}. Previously copied media links will stop working.`
     if (
       !window.confirm(
-        `Delete “${title || 'Untitled creative brief'}”?\n\nThis removes the project record. Generated shareable media may remain available.`,
+        `Delete “${title || 'Untitled creative brief'}”?\n\n${mediaDescription}`,
       )
     )
       return
     setDeletingId(recordId)
     try {
+      const deletionResults = await Promise.all(
+        assetKeys.map((key) => deleteFile(key)),
+      )
+      const failedDeletion = deletionResults.find((result) => !result.success)
+      if (failedDeletion) {
+        throw new Error(
+          failedDeletion.error ||
+            'One or more media files could not be deleted. Please try again.',
+        )
+      }
       await removeConfirmed(recordId)
       toast.success(
         'Project deleted',
-        'The creative brief was removed from your projects.',
+        assetKeys.length === 0
+          ? 'The creative brief was removed from your projects.'
+          : 'The creative brief and its stored media were permanently deleted.',
       )
     } catch (error) {
       toast.error(
@@ -133,7 +161,11 @@ export default function ProjectsPage() {
                       loading={deletingId === record.recordId}
                       disabled={!ready || deletingId !== null}
                       onClick={() =>
-                        removeProject(record.recordId, record.data.title)
+                        removeProject(
+                          record.recordId,
+                          record.data.title,
+                          record.data.assetManifest,
+                        )
                       }
                     >
                       <Trash2 />

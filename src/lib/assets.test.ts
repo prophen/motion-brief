@@ -6,6 +6,7 @@ import {
   normalizeAssetManifest,
   normalizeProjectAssetManifest,
   parseAssetManifest,
+  projectAssetKeys,
   removeAssetKind,
   upsertAssetManifest,
   type StoredAsset,
@@ -99,6 +100,23 @@ describe('asset manifests', () => {
     expect(parseAssetManifest(removeAssetKind(manifest, 'render'))).toEqual([
       image,
     ])
+  })
+
+  it('returns unique deletion keys only for the selected project', () => {
+    const own = { ...image, projectId: 'project-one' }
+    const duplicate = { ...updated, projectId: 'project-one' }
+    const anotherProject = {
+      ...image,
+      key: 'another.png',
+      projectId: 'project-two',
+    }
+
+    expect(
+      projectAssetKeys(
+        JSON.stringify([own, duplicate, anotherProject, image]),
+        'project-one',
+      ),
+    ).toEqual(['one.png'])
   })
 
   it('decodes a base64 narration data URL and rejects malformed input', () => {
