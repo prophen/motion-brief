@@ -67,6 +67,17 @@ test('each browser renders its own signed-in account', async ({ users }) => {
       },
     )
   }
+
+  const signOutItem = a.page.getByRole('menuitem', { name: 'Sign out' })
+  if (!(await signOutItem.isVisible()))
+    await a.page.getByRole('button', { name: 'Account menu' }).click()
+  await signOutItem.click()
+  await expect(a.page).toHaveURL('/')
+  await expect(
+    a.page.getByRole('heading', {
+      name: 'Turn one rough idea into something you can see and hear.',
+    }),
+  ).toBeVisible()
 })
 
 test('API status page renders loading success and error states', async ({

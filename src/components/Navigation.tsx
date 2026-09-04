@@ -36,6 +36,16 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
+  async function handleSignOut() {
+    try {
+      await signOut()
+    } finally {
+      // A full navigation unmounts the realtime/auth providers and prevents a
+      // signed-out visitor from continuing to see the previous project state.
+      window.location.replace('/')
+    }
+  }
+
   const profileReady = !isSignedIn || (!userLoading && !!user)
   const userRole = (user?.role ?? 'anonymous') as Role | 'anonymous'
 
@@ -145,7 +155,7 @@ export default function Navigation() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut aria-hidden />
                   Sign out
                 </DropdownMenuItem>
