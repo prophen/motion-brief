@@ -15,6 +15,7 @@ import {
   type StoredAsset,
 } from '../lib/assets.js'
 import { buildShotstackEdit } from '../lib/shotstack.js'
+import type { MotionPreset } from '../lib/motion-presets.js'
 import { sanitizeDiagnosticBody } from '../lib/provider-diagnostics.js'
 import { formatIntegrationError } from '../lib/integration-errors.js'
 import {
@@ -426,12 +427,12 @@ async function inspectPublicAsset(
 
 export async function preflightShotstackAssets(
   env: Env,
-  input: { videoKey: string; audioKey?: string; signal?: AbortSignal },
+  input: { imageKey: string; audioKey?: string; signal?: AbortSignal },
 ): Promise<RenderPreflight> {
   const checks = [
     inspectPublicAsset(
-      'video',
-      publicAppAssetUrl(env, input.videoKey),
+      'image',
+      publicAppAssetUrl(env, input.imageKey),
       input.signal,
     ),
   ]
@@ -455,17 +456,17 @@ export async function submitShotstackRender(
   env: Env,
   input: {
     headline: string
-    videoKey: string
-    videoLength?: number
+    imageKey: string
+    motionPreset: MotionPreset
     audioKey?: string
     audioLength?: number
   },
 ): Promise<{ renderId: string }> {
-  if (!input.videoKey.trim()) throw new Error('stored_video_required')
+  if (!input.imageKey.trim()) throw new Error('stored_image_required')
   const edit = buildShotstackEdit({
     headline: input.headline,
-    videoUrl: publicAppAssetUrl(env, input.videoKey),
-    videoLength: input.videoLength,
+    imageUrl: publicAppAssetUrl(env, input.imageKey),
+    motionPreset: input.motionPreset,
     audioUrl: input.audioKey
       ? publicAppAssetUrl(env, input.audioKey)
       : undefined,

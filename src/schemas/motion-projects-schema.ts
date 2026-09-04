@@ -14,6 +14,14 @@ export const motionProjectsSchema: CollectionSchema = {
     { name: 'headline', storage: 'text', interpretation: 'plain' },
     { name: 'stillPrompt', storage: 'text', interpretation: 'plain' },
     { name: 'motionPrompt', storage: 'text', interpretation: 'plain' },
+    {
+      name: 'motionPreset',
+      storage: 'text',
+      interpretation: {
+        kind: 'select',
+        options: ['push-in', 'pull-back', 'pan-left', 'pan-right'],
+      },
+    },
     { name: 'pipelineVersion', storage: 'number', interpretation: 'plain' },
     // JSON-encoded until the schema layer supports a native JSON storage column.
     { name: 'assetManifest', storage: 'text', interpretation: 'plain' },

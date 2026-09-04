@@ -5,12 +5,13 @@ import {
 } from './shotstack'
 
 describe('Shotstack edit contract', () => {
-  it('builds a silent five-second vertical timeline', () => {
+  it('builds a silent five-second vertical image timeline', () => {
     const edit = buildShotstackEdit({
       headline: 'MAKE IT MOVE',
-      videoUrl: 'https://motionbrief.app.space/api/files/clip.mp4',
+      imageUrl: 'https://motionbrief.app.space/api/files/visual.jpg',
+      motionPreset: 'push-in',
     })
-    expect(edit.duration).toBe(4.9)
+    expect(edit.duration).toBe(5)
     expect(edit.output).toMatchObject({
       format: 'mp4',
       aspectRatio: '9:16',
@@ -18,9 +19,10 @@ describe('Shotstack edit contract', () => {
     })
     expect(edit.timeline.tracks).toHaveLength(1)
     expect(edit.timeline.tracks[0].clips[0]).toMatchObject({
-      asset: { type: 'video', transcode: true, volume: 0 },
-      length: 4.9,
+      asset: { type: 'image' },
+      length: 5,
       fit: 'crop',
+      effect: 'zoomIn',
     })
     expect(JSON.stringify(edit)).not.toContain('MAKE IT MOVE')
   })
@@ -28,7 +30,8 @@ describe('Shotstack edit contract', () => {
   it('adds narration before the video track', () => {
     const edit = buildShotstackEdit({
       headline: 'MOVE',
-      videoUrl: 'https://example.com/video.mp4',
+      imageUrl: 'https://example.com/image.jpg',
+      motionPreset: 'pan-left',
       audioUrl: 'https://example.com/audio.mp3',
       audioLength: 3.9,
     })
@@ -39,18 +42,18 @@ describe('Shotstack edit contract', () => {
     })
   })
 
-  it('never declares clips longer than the measured source video', () => {
+  it('caps narration to the five-second image timeline', () => {
     const edit = buildShotstackEdit({
       headline: 'MOVE',
-      videoUrl: 'https://example.com/video.mp4',
-      videoLength: 4.97,
+      imageUrl: 'https://example.com/image.jpg',
+      motionPreset: 'pull-back',
       audioUrl: 'https://example.com/audio.mp3',
-      audioLength: 5,
+      audioLength: 8,
     })
-    expect(edit.duration).toBe(4.9)
+    expect(edit.duration).toBe(5)
     expect(
       edit.timeline.tracks.every(
-        (track) => (track.clips[0] as { length: number }).length <= 4.9,
+        (track) => (track.clips[0] as { length: number }).length <= 5,
       ),
     ).toBe(true)
   })
@@ -59,15 +62,17 @@ describe('Shotstack edit contract', () => {
     expect(() =>
       buildShotstackEdit({
         headline: 'MOVE',
-        videoUrl: '/api/files/video.mp4',
+        imageUrl: '/api/files/image.jpg',
+        motionPreset: 'push-in',
       }),
     ).toThrow('Invalid URL')
     expect(() =>
       buildShotstackEdit({
         headline: 'MOVE',
-        videoUrl: 'http://example.com/video.mp4',
+        imageUrl: 'http://example.com/image.jpg',
+        motionPreset: 'push-in',
       }),
-    ).toThrow('video_asset_must_use_https')
+    ).toThrow('image_asset_must_use_https')
   })
 
   it('builds a one-second text-only provider control with no external assets', () => {

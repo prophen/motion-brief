@@ -7,6 +7,7 @@ export type CreativePackageInput = {
   narration: string
   headline: string
   stillPrompt: string
+  motionPreset?: string
   imageUrl?: string
   audioUrl?: string
 }
@@ -22,6 +23,7 @@ export function buildCreativePackageMarkdown(
     `## Headline\n${input.headline.trim()}`,
     `## Visual direction\n${input.visualDirection.trim()}`,
     `## Image prompt\n${input.stillPrompt.trim()}`,
+    `## Motion style\n${input.motionPreset?.trim() || 'Slow push in'}`,
     `## Narration\n${input.narration.trim() || 'Silent concept'}`,
   ]
 

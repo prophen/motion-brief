@@ -12,6 +12,15 @@ describe('render asset preflight', () => {
   }
   it('accepts a public ranged video response', () =>
     expect(validateAssetResponse(base).ok).toBe(true))
+  it('accepts a public image response', () =>
+    expect(
+      validateAssetResponse({
+        ...base,
+        kind: 'image',
+        url: 'https://example.com/image.jpg',
+        contentType: 'image/jpeg',
+      }).ok,
+    ).toBe(true))
   it('rejects inaccessible assets', () =>
     expect(validateAssetResponse({ ...base, status: 403 }).error).toContain(
       '403',

@@ -95,6 +95,77 @@
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
 }
 
+@keyframes motionbrief-push-in {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes motionbrief-pull-back {
+  from {
+    transform: scale(1.12);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes motionbrief-pan-left {
+  from {
+    transform: scale(1.12) translateX(4%);
+  }
+  to {
+    transform: scale(1.12) translateX(-4%);
+  }
+}
+
+@keyframes motionbrief-pan-right {
+  from {
+    transform: scale(1.12) translateX(-4%);
+  }
+  to {
+    transform: scale(1.12) translateX(4%);
+  }
+}
+
+.motion-preview-push-in,
+.motion-preview-pull-back,
+.motion-preview-pan-left,
+.motion-preview-pan-right {
+  animation-duration: 5s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  transform-origin: center;
+}
+
+.motion-preview-push-in {
+  animation-name: motionbrief-push-in;
+}
+
+.motion-preview-pull-back {
+  animation-name: motionbrief-pull-back;
+}
+
+.motion-preview-pan-left {
+  animation-name: motionbrief-pan-left;
+}
+
+.motion-preview-pan-right {
+  animation-name: motionbrief-pan-right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-preview-push-in,
+  .motion-preview-pull-back,
+  .motion-preview-pan-left,
+  .motion-preview-pan-right {
+    animation: none;
+  }
+}
+
 /* Theme override blocks live in `themes.css` — imported above. */
 
 /*

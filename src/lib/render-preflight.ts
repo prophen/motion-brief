@@ -1,5 +1,5 @@
 export type AssetPreflight = {
-  kind: 'video' | 'audio'
+  kind: 'image' | 'video' | 'audio'
   url: string
   ok: boolean
   status: number
@@ -18,7 +18,7 @@ export type RenderPreflight = {
 export function validateAssetResponse(
   input: Omit<AssetPreflight, 'ok' | 'error'>,
 ): AssetPreflight {
-  const expected = input.kind === 'video' ? 'video/' : 'audio/'
+  const expected = `${input.kind}/`
   const error = ![200, 206].includes(input.status)
     ? `Public ${input.kind} returned HTTP ${input.status}.`
     : !input.contentType.toLowerCase().startsWith(expected)

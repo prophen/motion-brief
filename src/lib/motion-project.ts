@@ -1,4 +1,5 @@
 import { DEFAULT_MOTIONBRIEF_VOICE_ID } from './voices'
+import { DEFAULT_MOTION_PRESET, type MotionPreset } from './motion-presets'
 
 export type MotionProject = {
   title: string
@@ -12,6 +13,7 @@ export type MotionProject = {
   headline: string
   stillPrompt: string
   motionPrompt: string
+  motionPreset: MotionPreset
   pipelineVersion: number
   assetManifest: string
   imageUrl: string
@@ -33,6 +35,7 @@ export const newMotionProject: MotionProject = {
   headline: '',
   stillPrompt: '',
   motionPrompt: '',
+  motionPreset: DEFAULT_MOTION_PRESET,
   pipelineVersion: 1,
   assetManifest: '[]',
   imageUrl: '',

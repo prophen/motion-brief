@@ -122,12 +122,12 @@ export async function runJob(
       throw new Error('preflight_job_requires_app_owner')
     const payload = job.payload as {
       projectId: string
-      videoKey: string
+      imageKey: string
       audioKey?: string
     }
     ctx.progress(0.2, 'Checking public render assets')
     const preflight = await preflightShotstackAssets(env, {
-      videoKey: payload.videoKey,
+      imageKey: payload.imageKey,
       audioKey: payload.audioKey,
       signal: ctx.signal,
     })
@@ -376,8 +376,8 @@ export async function runJob(
     const payload = job.payload as {
       projectId: string
       headline: string
-      videoKey: string
-      videoLength?: number
+      imageKey: string
+      motionPreset: 'push-in' | 'pull-back' | 'pan-left' | 'pan-right'
       audioKey?: string
       audioLength?: number
     }

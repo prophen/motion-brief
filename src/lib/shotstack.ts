@@ -1,5 +1,7 @@
 const RENDER_SECONDS = 5
 
+import { shotstackEffectForPreset, type MotionPreset } from './motion-presets'
+
 function requireHttpsUrl(value: string, error: string): string {
   const url = new URL(value)
   if (url.protocol !== 'https:') throw new Error(error)
@@ -8,21 +10,12 @@ function requireHttpsUrl(value: string, error: string): string {
 
 export function buildShotstackEdit(input: {
   headline: string
-  videoUrl: string
-  videoLength?: number
+  imageUrl: string
+  motionPreset: MotionPreset
   audioUrl?: string
   audioLength?: number
 }) {
-  // Stay below the measured media boundary and on a predictable tenth-second
-  // boundary. Provider probes can report a source a frame shorter than browsers.
-  const measuredVideoSeconds = Math.min(
-    RENDER_SECONDS,
-    Math.max(0.1, input.videoLength ?? RENDER_SECONDS),
-  )
-  const renderSeconds = Math.max(
-    0.1,
-    Math.floor((measuredVideoSeconds - 0.05) * 10) / 10,
-  )
+  const renderSeconds = RENDER_SECONDS
   const tracks: Array<{ clips: unknown[] }> = []
   if (input.audioUrl) {
     const measuredAudioSeconds = Math.min(
@@ -51,14 +44,13 @@ export function buildShotstackEdit(input: {
     clips: [
       {
         asset: {
-          type: 'video',
-          src: requireHttpsUrl(input.videoUrl, 'video_asset_must_use_https'),
-          transcode: true,
-          volume: 0,
+          type: 'image',
+          src: requireHttpsUrl(input.imageUrl, 'image_asset_must_use_https'),
         },
         start: 0,
         length: renderSeconds,
         fit: 'crop',
+        effect: shotstackEffectForPreset(input.motionPreset),
       },
     ],
   })

@@ -15,6 +15,7 @@ describe('fresh motion projects', () => {
       headline: '',
       stillPrompt: '',
       motionPrompt: '',
+      motionPreset: 'push-in',
     })
   })
 })

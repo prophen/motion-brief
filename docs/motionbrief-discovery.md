@@ -234,6 +234,10 @@ A second deployed Wan submission using the healthy provider-native `v3b.fal.medi
 
 Free catalog discovery confirmed `fal-ai/cosmos-predict-2.5/image-to-video` is active, commercial, runnable, and billed at a fixed **$0.20 per video**. It accepts `prompt` and `image_url`, produces MP4 with `video_output_type: "X264 (.mp4)"`, and supports up to 93 frames. MotionBrief now uses 93 frames, 20 inference steps, guidance scale 7, medium quality, and asynchronous output. Unlike Wan, Cosmos does not expose an exact duration or aspect-ratio parameter; the final Shotstack edit uses the measured clip duration, caps the final output at five seconds, and crops to 9:16. The first 35-step/high-quality attempt remained pending beyond the original 7.5-minute polling window, so the production settings were reduced and the polling allowance extended.
 
+### Submission motion decision (2026-09-03)
+
+Generative image-to-video is disabled in the submission flow. Cosmos completed slowly and its output did not reliably follow the edited motion direction; Wan also produced an unexpectedly high observed charge in live usage. MotionBrief now offers deterministic push-in, pull-back, pan-left, and pan-right presets. The browser previews the selected movement immediately, and Shotstack applies the corresponding image effect while combining the five-second still timeline with narration. This removes the separate animation charge and makes the important path predictable while retaining OpenAI, FAL still generation, ElevenLabs, and Shotstack as four meaningful integrations.
+
 ## Provider controls (2026-09-02)
 
 An owner-only server-side diagnostic used the same `apiWorkerFetch` path as MotionBrief and captured sanitized bodies plus correlation headers.

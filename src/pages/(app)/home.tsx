@@ -11,7 +11,6 @@ import {
   FolderOpen,
   Image,
   Mic2,
-  Play,
   Plus,
   RefreshCw,
   Save,
@@ -53,10 +52,8 @@ import {
   newMotionProject,
   type MotionProject as Project,
 } from '../../lib/motion-project'
-import {
-  FINAL_RENDER_ENABLED,
-  MOTION_GENERATION_ENABLED,
-} from '../../lib/pipeline-config'
+import { MOTION_PRESETS, normalizeMotionPreset } from '../../lib/motion-presets'
+import { FINAL_RENDER_ENABLED } from '../../lib/pipeline-config'
 import type { RenderPreflight } from '../../lib/render-preflight'
 import { readMediaDuration } from '../../lib/video-upload'
 import { MOTIONBRIEF_VOICES } from '../../lib/voices'
@@ -148,7 +145,6 @@ export default function HomePage() {
   const loadedRecord = useRef<string | null>(null)
   const appliedBriefJob = useRef<string | null>(null)
   const appliedStillJob = useRef<string | null>(null)
-  const appliedMotionJob = useRef<string | null>(null)
   const appliedVoiceJob = useRef<string | null>(null)
   const appliedRenderJob = useRef<string | null>(null)
   const appliedPreflightJob = useRef<string | null>(null)
@@ -169,15 +165,6 @@ export default function HomePage() {
       latestJob(
         jobs,
         ['motionbrief-generate-still', 'motionbrief-store-still'],
-        recordId,
-      ),
-    [jobs, recordId],
-  )
-  const motionJob = useMemo(
-    () =>
-      latestJob(
-        jobs,
-        ['motionbrief-generate-motion', 'motionbrief-store-motion'],
         recordId,
       ),
     [jobs, recordId],
@@ -230,13 +217,12 @@ export default function HomePage() {
       )
     : '[]'
   const imageAsset = latestStoredAsset(projectAssetManifest, 'image')
-  const videoAsset = latestStoredAsset(projectAssetManifest, 'video')
   const audioAsset = latestStoredAsset(projectAssetManifest, 'audio')
-  const renderAsset = latestStoredAsset(projectAssetManifest, 'render')
+  const renderAsset =
+    draft.status === 'complete'
+      ? latestStoredAsset(projectAssetManifest, 'render')
+      : undefined
   const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : ''
-  const videoUrl = videoAsset ? appFileUrl(videoAsset.key) : ''
-  const temporaryVideoUrl = motionJob?.result?.temporaryVideoUrl ?? ''
-  const previewVideoUrl = videoUrl || temporaryVideoUrl
   const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : ''
   const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : ''
   const narrationNeedsMp3Repair = Boolean(
@@ -279,6 +265,7 @@ export default function HomePage() {
     setDraft({
       ...newMotionProject,
       ...stored.data,
+      motionPreset: normalizeMotionPreset(stored.data.motionPreset),
       assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]'),
     })
   }, [creatingNew, stored])
@@ -424,72 +411,6 @@ export default function HomePage() {
     }
   }
 
-  async function generateMotion() {
-    if (!isSignedIn || !recordId)
-      return toast.info(
-        'Save first',
-        'Save the brief before generating motion.',
-      )
-    const recover = motionJob?.result?.temporaryVideoUrl
-    if (!recover && !imageAsset)
-      return toast.error(
-        'Visual required',
-        'Generate and store the campaign visual first.',
-      )
-    if (!recover && !draft.motionPrompt.trim())
-      return toast.error(
-        'Motion prompt required',
-        'Generate or edit the motion direction first.',
-      )
-    const durableImageUrl = imageAsset
-      ? new URL(appFileUrl(imageAsset.key), window.location.origin)
-      : null
-    if (!recover && durableImageUrl?.protocol !== 'https:')
-      return toast.info(
-        'Deploy to animate',
-        'FAL needs the public HTTPS URL from the deployed app.',
-      )
-    if (
-      !recover &&
-      !confirmPaidCall(
-        'Provider: FAL\nModel: Cosmos Predict 2.5 2B\nOutput: up to 93 frames, MP4\nPublished provider cost: $0.20 per video\nDeepSpace manages and reconciles the temporary reserve.',
-      )
-    )
-      return
-    setQueuing(true)
-    try {
-      const jobId = recover
-        ? await enqueue(
-            'motionbrief-store-motion',
-            { projectId: recordId, sourceUrl: recover },
-            { maxAttempts: 1 },
-          )
-        : await enqueue(
-            'motionbrief-generate-motion',
-            {
-              projectId: recordId,
-              motionPrompt: draft.motionPrompt,
-              imageUrl: durableImageUrl!.href,
-            },
-            { maxAttempts: 1 },
-          )
-      jobsStartedHere.current.add(jobId)
-      toast.success(
-        recover ? 'Video storage retry queued' : 'Motion queued',
-        recover
-          ? 'Reusing the generated video at no generation cost.'
-          : 'FAL is animating the campaign visual.',
-      )
-    } catch (error) {
-      toast.error(
-        'Could not queue',
-        error instanceof Error ? error.message : 'Please try again.',
-      )
-    } finally {
-      setQueuing(false)
-    }
-  }
-
   async function generateNarration() {
     if (!isSignedIn || !recordId)
       return toast.info(
@@ -576,10 +497,10 @@ export default function HomePage() {
     if (!isSignedIn || !recordId)
       return toast.info('Save first', 'Save the brief before rendering.')
     const recover = renderJob?.result?.temporaryRenderUrl
-    if (!recover && !videoAsset)
+    if (!recover && !imageAsset)
       return toast.error(
-        'Motion required',
-        'Generate and store the five-second motion clip first.',
+        'Visual required',
+        'Generate and store the campaign visual first.',
       )
     if (!recover && narrationNeedsMp3Repair)
       return toast.info(
@@ -607,16 +528,6 @@ export default function HomePage() {
           'Reusing the existing Shotstack result at no render cost.',
         )
       } else {
-        const measuredVideoLength = await readMediaDuration(
-          appFileUrl(videoAsset!.key),
-          'video',
-        )
-        if (measuredVideoLength < 4.95)
-          throw new Error('motion_video_must_be_at_least_4.95_seconds')
-        const videoLength = Math.min(
-          5,
-          Math.max(0.1, measuredVideoLength - 0.02),
-        )
         const audioLength = audioAsset
           ? await readMediaDuration(appFileUrl(audioAsset.key), 'audio')
           : undefined
@@ -625,8 +536,8 @@ export default function HomePage() {
           'motionbrief-preflight-render',
           {
             projectId: recordId,
-            videoKey: videoAsset!.key,
-            videoLength,
+            imageKey: imageAsset!.key,
+            motionPreset: draft.motionPreset,
             audioKey: audioAsset?.key,
             audioLength,
           },
@@ -757,44 +668,6 @@ export default function HomePage() {
 
   useEffect(() => {
     if (
-      motionJob?.status !== 'succeeded' ||
-      motionJob.result?.asset?.kind !== 'video' ||
-      appliedMotionJob.current === motionJob.id
-    )
-      return
-    appliedMotionJob.current = motionJob.id
-    const shouldNotify = jobsStartedHere.current.delete(motionJob.id)
-    if (videoAsset?.key === motionJob.result.asset.key) return
-    const next = {
-      ...draft,
-      videoUrl: appFileUrl(motionJob.result.asset.key),
-      assetManifest: upsertAssetManifest(
-        draft.assetManifest,
-        motionJob.result.asset,
-      ),
-      status: 'ready' as const,
-    }
-    setDraft(next)
-    if (recordId)
-      void putConfirmed(recordId, next)
-        .then(() => {
-          if (shouldNotify)
-            toast.success(
-              'Motion ready',
-              'The five-second FAL video is stored and ready to render.',
-            )
-        })
-        .catch((error) => {
-          if (shouldNotify)
-            toast.error(
-              'Video ready but not saved',
-              error instanceof Error ? error.message : 'Save it manually.',
-            )
-        })
-  }, [draft, motionJob, putConfirmed, recordId, toast, videoAsset?.key])
-
-  useEffect(() => {
-    if (
       voiceJob?.status !== 'succeeded' ||
       voiceJob.result?.asset?.kind !== 'audio' ||
       appliedVoiceJob.current === voiceJob.id
@@ -856,14 +729,14 @@ export default function HomePage() {
       return
     }
     const payload = preflightJob.payload as {
-      videoKey: string
-      videoLength: number
+      imageKey: string
+      motionPreset: Project['motionPreset']
       audioKey?: string
       audioLength?: number
     }
     if (
       !confirmPaidCall(
-        `Provider: Shotstack\nTimeline: ${payload.videoLength.toFixed(2)}-second 9:16 MP4\nAssets: public video${payload.audioKey ? ` + ${Math.min(payload.videoLength, payload.audioLength ?? payload.videoLength).toFixed(2)}s narration` : ''}\nEstimated cost: usage-based per rendered second`,
+        `Provider: Shotstack\nTimeline: 5-second 9:16 MP4 with ${MOTION_PRESETS.find((preset) => preset.id === payload.motionPreset)?.label.toLowerCase()} motion\nAssets: public image${payload.audioKey ? ` + ${Math.min(5, payload.audioLength ?? 5).toFixed(2)}s narration` : ''}\nEstimated cost: usage-based per rendered second`,
       )
     ) {
       setRenderAttemptStartedAt(null)
@@ -878,8 +751,8 @@ export default function HomePage() {
       {
         projectId: recordId,
         headline: draft.headline,
-        videoKey: payload.videoKey,
-        videoLength: payload.videoLength,
+        imageKey: payload.imageKey,
+        motionPreset: payload.motionPreset,
         audioKey: payload.audioKey,
         audioLength: payload.audioLength,
       },
@@ -940,7 +813,7 @@ export default function HomePage() {
 
   const stepState = [
     { job: briefJob, done: Boolean(recordId && draft.stillPrompt.trim()) },
-    { job: motionJob ?? stillJob, done: Boolean(imageAsset && videoAsset) },
+    { job: stillJob, done: Boolean(imageAsset) },
     { job: voiceJob, done: Boolean(audioAsset) },
     { job: currentRenderActivity, done: Boolean(renderAsset) },
   ]
@@ -964,18 +837,19 @@ export default function HomePage() {
   }
 
   const showingFinalRender = activeStep === 3 && Boolean(renderUrl)
-  const displayedVideoUrl = showingFinalRender ? renderUrl : previewVideoUrl
+  const previewMotionClass = {
+    'push-in': 'motion-preview-push-in',
+    'pull-back': 'motion-preview-pull-back',
+    'pan-left': 'motion-preview-pan-left',
+    'pan-right': 'motion-preview-pan-right',
+  }[draft.motionPreset]
   const mediaPreview = (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.22)]">
       <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
-        {displayedVideoUrl ? (
+        {showingFinalRender ? (
           <video
-            src={displayedVideoUrl}
-            aria-label={
-              showingFinalRender
-                ? 'Final MotionBrief video'
-                : 'Generated MotionBrief animation'
-            }
+            src={renderUrl}
+            aria-label="Final MotionBrief video"
             className="absolute inset-0 h-full w-full object-cover"
             controls
             playsInline
@@ -984,8 +858,8 @@ export default function HomePage() {
         ) : imageUrl ? (
           <img
             src={imageUrl}
-            alt="Generated MotionBrief campaign visual"
-            className="absolute inset-0 h-full w-full object-cover"
+            alt="Animated preview of the generated MotionBrief campaign visual"
+            className={`absolute inset-0 h-full w-full object-cover ${previewMotionClass}`}
           />
         ) : (
           <>
@@ -1009,12 +883,14 @@ export default function HomePage() {
         <span>
           {showingFinalRender
             ? 'Final MP4'
-            : previewVideoUrl
-              ? 'Motion ready'
-              : audioUrl
+            : activeStep === 1
+              ? imageUrl
+                ? 'Motion preview'
+                : 'Add a visual'
+              : activeStep === 2 && audioUrl
                 ? 'Voiced concept'
                 : imageUrl
-                  ? 'Visual ready'
+                  ? 'Motion preview'
                   : 'Preview'}
         </span>
       </div>
@@ -1234,8 +1110,8 @@ export default function HomePage() {
                   Create the visual
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Generate one still, then animate it into a five-second
-                  vertical clip.
+                  Generate one still, then choose a reliable five-second camera
+                  move.
                 </p>
               </div>
               <Field id="visual-direction" label="Visual direction">
@@ -1273,45 +1149,30 @@ export default function HomePage() {
                   ? 'Retry image storage · $0'
                   : 'Generate visual · $0.035'}
               </Button>
-              <Field id="motion-direction" label="Motion direction">
-                <Textarea
-                  id="motion-direction"
-                  value={draft.motionPrompt || draft.motionDirection}
-                  onChange={(event) => set('motionPrompt', event.target.value)}
-                  className="min-h-24 bg-card"
-                />
-              </Field>
-              <Button
-                onClick={generateMotion}
-                loading={
-                  motionJob?.status === 'queued' ||
-                  motionJob?.status === 'running'
-                }
-                disabled={
-                  !recordId ||
-                  !MOTION_GENERATION_ENABLED ||
-                  (!imageAsset && !motionJob?.result?.temporaryVideoUrl)
-                }
-              >
-                <Play />
-                {motionJob?.result?.temporaryVideoUrl
-                  ? 'Retry video storage · $0'
-                  : 'Animate · $0.20'}
-              </Button>
-              {motionJob && (
-                <p
-                  role="status"
-                  className={`text-sm ${motionJob.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}
+              <Field id="motion-preset" label="Motion style">
+                <Select
+                  value={draft.motionPreset}
+                  onValueChange={(value) =>
+                    set('motionPreset', normalizeMotionPreset(value))
+                  }
                 >
-                  {motionJob.status === 'failed'
-                    ? `Animation failed: ${motionJob.error ?? 'Unknown provider error'}`
-                    : motionJob.status === 'succeeded' && videoAsset
-                      ? 'Animation complete.'
-                      : motionJob.status === 'succeeded' && temporaryVideoUrl
-                        ? 'Animation generated. Previewing the temporary result; use “Retry video storage” to save it permanently at no generation cost.'
-                        : `${motionJob.progressMessage ?? 'Cosmos is generating the animation.'} This can take several minutes.`}
-                </p>
-              )}
+                  <SelectTrigger id="motion-preset" className="bg-card">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOTION_PRESETS.map((preset) => (
+                      <SelectItem key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <p className="text-sm text-muted-foreground">
+                The preview updates instantly. Shotstack applies this motion
+                when you render the final MP4—there is no separate animation
+                charge.
+              </p>
             </div>
             <aside
               aria-label="Visual preview"
@@ -1465,7 +1326,7 @@ export default function HomePage() {
                 disabled={
                   !recordId ||
                   !FINAL_RENDER_ENABLED ||
-                  (!videoAsset && !renderJob?.result?.temporaryRenderUrl)
+                  (!imageAsset && !renderJob?.result?.temporaryRenderUrl)
                 }
               >
                 <Clapperboard />
@@ -1518,16 +1379,6 @@ export default function HomePage() {
                     >
                       <Download />
                       Narration
-                    </a>
-                  )}
-                  {videoUrl && (
-                    <a
-                      className={buttonVariants({ variant: 'outline' })}
-                      href={videoUrl}
-                      download
-                    >
-                      <Download />
-                      Motion
                     </a>
                   )}
                   {renderUrl && (
