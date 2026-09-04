@@ -15,12 +15,12 @@ export function buildShotstackEdit(input: { headline: string; videoUrl: string; 
   const tracks: Array<{ clips: unknown[] }> = [{
     clips: [{
       asset: {
-        type: 'text', text: input.headline.trim(), width: 900, height: 300,
-        font: { family: 'Open Sans', color: '#ffffff', size: 72, weight: 700, lineHeight: 1 },
+        type: 'text', text: input.headline.trim().toUpperCase(), width: 820, height: 180,
+        font: { family: 'Open Sans', color: '#f4f1e8', size: 54, weight: 700, lineHeight: 1 },
         alignment: { horizontal: 'center', vertical: 'center' },
-        stroke: { width: 2, color: '#000000' },
+        stroke: { width: 1, color: '#171714' },
       },
-      start: 0, length: renderSeconds, position: 'center',
+      start: 0, length: renderSeconds, position: 'bottom',
     }],
   }]
   if (input.audioUrl) {
