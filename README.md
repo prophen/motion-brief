@@ -27,7 +27,7 @@ Signed-in users also get a private project library with separately saved concept
 MotionBrief runs on [DeepSpace](https://deep.space), with the UI and Cloudflare Worker shipped as one application.
 
 - **OpenAI / `chat-completion`** turns the initial prompt into structured, editable strategy, copy, and generation prompts.
-- **FAL / `run-model`** creates the portrait campaign visual with Seedream v5 Lite.
+- **FAL / `run-model`** creates the portrait campaign visual with FLUX.1 Schnell.
 - **ElevenLabs / `generate-speech`** records the short narration in the selected voice.
 - **Shotstack / `render`** applies the chosen camera move and combines the visual and narration into a five-second 9:16 MP4.
 

@@ -1144,7 +1144,7 @@ export default function HomePage() {
                 <Image />
                 {stillJob?.result?.temporaryImageUrl
                   ? 'Retry image storage · $0'
-                  : 'Generate visual · $0.035'}
+                  : 'Generate visual · est. $0.006'}
               </Button>
               <Field id="motion-preset" label="Motion style">
                 <Select

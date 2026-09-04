@@ -26,8 +26,8 @@ import {
 
 export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
-export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
-export const FAL_STILL_MAX_COST_USD = 0.04
+export const FAL_STILL_MODEL = 'fal-ai/flux/schnell'
+export const FAL_STILL_MAX_COST_USD = 0.01
 export const FAL_MOTION_MODEL = 'fal-ai/cosmos-predict-2.5/image-to-video'
 export const ELEVENLABS_MODEL_ID = 'eleven_flash_v2_5'
 export const ELEVENLABS_OUTPUT_FORMAT = 'mp3_44100_128'
@@ -246,11 +246,11 @@ export async function submitFalStill(
       input: {
         prompt: prompt.trim(),
         image_size: 'portrait_16_9',
+        num_inference_steps: 4,
         num_images: 1,
-        max_images: 1,
         sync_mode: false,
         enable_safety_checker: true,
-        return_byteplus_urls: false,
+        output_format: 'jpeg',
       },
     }),
   )

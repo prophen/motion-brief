@@ -7,7 +7,7 @@ MotionBrief is an interactive creative-concept studio. A creator enters one roug
 ## DeepSpace integrations
 
 1. **OpenAI `chat-completion`** — creates the structured, editable brief, headline, narration, and image direction.
-2. **FAL `run-model` / `get-result`** — generates and polls for the Seedream portrait visual.
+2. **FAL `run-model` / `get-result`** — generates and polls for the FLUX.1 Schnell portrait visual.
 3. **ElevenLabs `generate-speech`** — turns the edited narration into audio using a user-selected voice.
 4. **Shotstack `render` / `get-render`** — applies the chosen camera move and combines the still and narration into the final MP4.
 
