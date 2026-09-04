@@ -994,7 +994,7 @@ export default function HomePage() {
           </>
         )}
       </div>
-      {audioUrl && !showingFinalRender && (
+      {activeStep === 2 && audioUrl && (
         <div className="border-t border-border p-3">
           <audio
             aria-label="Generated narration preview"
