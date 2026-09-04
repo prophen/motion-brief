@@ -4,7 +4,7 @@ import { Check, ChevronLeft, ChevronRight, Clapperboard, Clipboard, Download, Fi
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button, buttonVariants, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, useToast } from '../../components/ui'
 import { SCOPE_ID } from '../../constants'
-import { latestStoredAsset, normalizeAssetManifest, upsertAssetManifest, type StoredAsset } from '../../lib/assets'
+import { latestStoredAsset, normalizeAssetManifest, normalizeProjectAssetManifest, upsertAssetManifest, type StoredAsset } from '../../lib/assets'
 import { buildCreativePackageMarkdown, safePackageFilename } from '../../lib/creative-package'
 import { countWords, narrationFitsFiveSeconds, NARRATION_HARD_MAX_WORDS } from '../../lib/narration'
 import { freshMotionProject, newMotionProject, type MotionProject as Project } from '../../lib/motion-project'
@@ -48,8 +48,9 @@ function narrationReservationEstimate(text: string) {
 }
 
 function latestJob(jobs: ReturnType<typeof useJobs<unknown, PipelineResult>>['jobs'], types: string[], recordId: string | null) {
+  if (!recordId) return undefined
   return jobs
-    .filter(job => types.includes(job.type) && (!recordId || (job.payload as { projectId?: string } | undefined)?.projectId === recordId))
+    .filter(job => types.includes(job.type) && (job.payload as { projectId?: string } | undefined)?.projectId === recordId)
     .sort((a, b) => Date.parse(b.enqueuedAt) - Date.parse(a.enqueuedAt))[0]
 }
 
@@ -81,14 +82,15 @@ export default function HomePage() {
   const stored = requestedProjectId
     ? records.find(record => record.recordId === requestedProjectId)
     : creatingNew ? undefined : records[0]
-  const imageAsset = latestStoredAsset(draft.assetManifest, 'image')
-  const videoAsset = latestStoredAsset(draft.assetManifest, 'video')
-  const audioAsset = latestStoredAsset(draft.assetManifest, 'audio')
-  const renderAsset = latestStoredAsset(draft.assetManifest, 'render')
-  const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : draft.imageUrl
-  const videoUrl = videoAsset ? appFileUrl(videoAsset.key) : draft.videoUrl
-  const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : draft.audioUrl
-  const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : draft.renderUrl
+  const projectAssetManifest = recordId ? normalizeProjectAssetManifest(draft.assetManifest, recordId) : '[]'
+  const imageAsset = latestStoredAsset(projectAssetManifest, 'image')
+  const videoAsset = latestStoredAsset(projectAssetManifest, 'video')
+  const audioAsset = latestStoredAsset(projectAssetManifest, 'audio')
+  const renderAsset = latestStoredAsset(projectAssetManifest, 'render')
+  const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : ''
+  const videoUrl = videoAsset ? appFileUrl(videoAsset.key) : ''
+  const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : ''
+  const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : ''
   const narrationNeedsMp3Repair = Boolean(audioAsset && !audioAsset.key.toLowerCase().endsWith('.mp3'))
   const briefJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-brief'], recordId), [jobs, recordId])
   const stillJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-still', 'motionbrief-store-still'], recordId), [jobs, recordId])
@@ -120,7 +122,15 @@ export default function HomePage() {
 
   async function save() {
     if (!isSignedIn) return toast.info('Sign in to save', 'Saving and generation require an account.')
-    const values = { ...draft, assetManifest: normalizeAssetManifest(draft.assetManifest) }
+    const scopedManifest = recordId ? normalizeProjectAssetManifest(draft.assetManifest, recordId) : '[]'
+    const values = {
+      ...draft,
+      assetManifest: scopedManifest,
+      imageUrl: latestStoredAsset(scopedManifest, 'image')?.url ?? '',
+      videoUrl: latestStoredAsset(scopedManifest, 'video')?.url ?? '',
+      audioUrl: latestStoredAsset(scopedManifest, 'audio')?.url ?? '',
+      renderUrl: latestStoredAsset(scopedManifest, 'render')?.url ?? '',
+    }
     if (!values.prompt.trim()) return toast.error('Prompt required', 'Add the creator prompt before saving the brief.')
     if (values.narration.trim() && !narrationFitsFiveSeconds(values.narration)) {
       return toast.error('Narration timing', 'Use 8–13 words for a concise concept read.')
@@ -436,11 +446,19 @@ export default function HomePage() {
 
       <div className="mx-auto max-w-6xl px-5 py-8 md:px-9 md:py-10">
         {activeStep === 0 && <div className="mx-auto max-w-3xl space-y-6">
-          <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Step 1 of 4</p><h2 className="mt-2 text-2xl font-semibold">Shape the brief</h2><p className="mt-1 text-sm text-muted-foreground">Start with the raw idea, then review every AI-generated field.</p></div>
-          <Field id="creator-prompt" label="Creator prompt"><Textarea id="creator-prompt" value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed" /><Button className="mt-3" onClick={generateBrief} loading={queuing || briefJob?.status === 'queued' || briefJob?.status === 'running'} disabled={!recordId}><Sparkles />Generate AI brief</Button></Field>
-          <div className="grid gap-5 md:grid-cols-2"><Field id="project-name" label="Project name"><Input id="project-name" value={draft.title} onChange={event => set('title', event.target.value)} /></Field><Field id="audience" label="Audience"><Input id="audience" value={draft.audience} onChange={event => set('audience', event.target.value)} /></Field></div>
-          <Field id="objective" label="Objective"><Textarea id="objective" value={draft.objective} onChange={event => set('objective', event.target.value)} className="min-h-24 bg-card" /></Field>
-          <Field id="headline" label="Campaign headline"><Input id="headline" value={draft.headline} onChange={event => set('headline', event.target.value)} className="font-semibold" /></Field>
+          <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Step 1 of 4</p><h2 className="mt-2 text-2xl font-semibold">Shape the brief</h2><p className="mt-1 text-sm text-muted-foreground">Start with your idea, save it as a project, then ask AI to develop the editable brief.</p></div>
+          <div className="rounded-2xl border border-border bg-card p-5 md:p-6">
+            <div className="mb-4 flex items-start gap-3"><span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${recordId ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>{recordId ? <Check className="size-4" /> : '1'}</span><div><h3 className="font-medium">Write and save your prompt</h3><p className="mt-1 text-sm text-muted-foreground">Saving creates the project that generated assets will belong to.</p></div></div>
+            <Field id="creator-prompt" label="Creator prompt"><Textarea id="creator-prompt" value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-background text-lg leading-relaxed" /><Button className="mt-3" variant={recordId ? 'outline' : 'default'} onClick={save} loading={saving} disabled={!ready || !draft.prompt.trim()}><Save />{recordId ? 'Save prompt changes' : 'Save prompt'}</Button></Field>
+          </div>
+          <div className={`rounded-2xl border p-5 md:p-6 ${recordId ? 'border-primary/30 bg-primary/5' : 'border-border bg-card/50'}`}>
+            <div className="flex items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold">2</span><div className="flex-1"><h3 className="font-medium">Generate the editable brief</h3><p className="mt-1 text-sm text-muted-foreground">{recordId ? 'Your prompt is saved. You can now generate the brief.' : 'Save your prompt first to unlock generation.'}</p><Button className="mt-4" onClick={generateBrief} loading={queuing || briefJob?.status === 'queued' || briefJob?.status === 'running'} disabled={!recordId}><Sparkles />Generate AI brief</Button></div></div>
+          </div>
+          <div className="space-y-5 border-t border-border pt-6"><div><h3 className="font-medium">Editable AI brief</h3><p className="mt-1 text-sm text-muted-foreground">These fields start blank and fill in after generation. You can edit every result.</p></div>
+            <div className="grid gap-5 md:grid-cols-2"><Field id="project-name" label="Project name"><Input id="project-name" value={draft.title} onChange={event => set('title', event.target.value)} placeholder="Generated project name" /></Field><Field id="audience" label="Audience"><Input id="audience" value={draft.audience} onChange={event => set('audience', event.target.value)} placeholder="Generated audience" /></Field></div>
+            <Field id="objective" label="Objective"><Textarea id="objective" value={draft.objective} onChange={event => set('objective', event.target.value)} placeholder="Generated campaign objective" className="min-h-24 bg-card" /></Field>
+            <Field id="headline" label="Campaign headline"><Input id="headline" value={draft.headline} onChange={event => set('headline', event.target.value)} placeholder="Generated campaign headline" className="font-semibold" /></Field>
+          </div>
         </div>}
 
         {activeStep === 1 && <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">

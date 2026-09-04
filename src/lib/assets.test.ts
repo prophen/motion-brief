@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assetFileExtension, decodeBase64DataUrl, latestStoredAsset, normalizeAssetManifest, parseAssetManifest, upsertAssetManifest, type StoredAsset } from './assets'
+import { assetFileExtension, decodeBase64DataUrl, latestStoredAsset, normalizeAssetManifest, normalizeProjectAssetManifest, parseAssetManifest, upsertAssetManifest, type StoredAsset } from './assets'
 
 const image: StoredAsset = { kind: 'image', key: 'one.png', url: '/one', mimeType: 'image/png', sourceUrl: 'https://example.com/one', storedAt: '2026-09-02T00:00:00Z' }
 const updated: StoredAsset = { ...image, url: '/updated', storedAt: '2026-09-02T01:00:00Z' }
@@ -8,6 +8,12 @@ describe('asset manifests', () => {
   it('normalizes duplicate keys and preserves the latest value', () => {
     const assets = parseAssetManifest(normalizeAssetManifest(JSON.stringify([image, updated])))
     expect(assets).toEqual([updated])
+  })
+
+  it('removes assets inherited from another project', () => {
+    const own = { ...image, key: 'motionbrief/project-new/image-new.jpg' }
+    const inherited = { ...updated, key: 'motionbrief/project-old/render-old.mp4', kind: 'render' as const }
+    expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([inherited, own]), 'project-new'))).toEqual([own])
   })
 
   it('upserts without duplicating an asset and finds the latest kind', () => {

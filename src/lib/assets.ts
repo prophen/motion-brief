@@ -42,6 +42,15 @@ export function normalizeAssetManifest(value: string): string {
   return JSON.stringify([...unique.values()])
 }
 
+export function assetBelongsToProject(asset: StoredAsset, projectId: string): boolean {
+  const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, '-')
+  return asset.key.startsWith(`motionbrief/${safeProjectId}/`)
+}
+
+export function normalizeProjectAssetManifest(value: string, projectId: string): string {
+  return JSON.stringify(parseAssetManifest(normalizeAssetManifest(value)).filter(asset => assetBelongsToProject(asset, projectId)))
+}
+
 export function upsertAssetManifest(value: string, asset: StoredAsset): string {
   const assets = parseAssetManifest(value).filter(existing => existing.key !== asset.key)
   return JSON.stringify([...assets, asset])
