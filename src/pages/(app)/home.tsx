@@ -95,12 +95,6 @@ function appFileUrl(key: string) {
   return `/api/files/${key.split('/').map(encodeURIComponent).join('/')}?scope=app`
 }
 
-function confirmPaidCall(details: string) {
-  return window.confirm(
-    `Confirm one paid provider call\n\n${details}\n\nThis submits exactly one paid request. Continue?`,
-  )
-}
-
 function narrationReservationEstimate(text: string) {
   return text.trim().length * 0.000065 * 1.3
 }
@@ -334,12 +328,6 @@ export default function HomePage() {
         'Save first',
         'Save your creator prompt before generating the brief.',
       )
-    if (
-      !confirmPaidCall(
-        'Provider: OpenAI\nModel: gpt-5.6-terra\nOutput: editable creative direction and copy',
-      )
-    )
-      return
     setQueuing(true)
     try {
       const jobId = await enqueue(
@@ -371,13 +359,6 @@ export default function HomePage() {
         'Image prompt required',
         'Generate or edit the image prompt first.',
       )
-    if (
-      !recover &&
-      !confirmPaidCall(
-        'Provider: FAL\nModel: Seedream v5 Lite\nOutput: one portrait campaign visual\nEstimated cost: $0.035',
-      )
-    )
-      return
     setQueuing(true)
     try {
       if (recover) {
@@ -422,13 +403,6 @@ export default function HomePage() {
         'Narration timing',
         'Use 8–13 words for a concise read.',
       )
-    if (
-      !recover &&
-      !confirmPaidCall(
-        `Provider: ElevenLabs\nModel: eleven_flash_v2_5\nVoice: ${MOTIONBRIEF_VOICES.find((voice) => voice.id === draft.voiceId)?.name ?? draft.voiceId}\nEstimated reservation: $${narrationReservationEstimate(draft.narration).toFixed(4)}`,
-      )
-    )
-      return
     setQueuing(true)
     try {
       if (recover) {
@@ -736,18 +710,6 @@ export default function HomePage() {
       motionPreset: Project['motionPreset']
       audioKey?: string
       audioLength?: number
-    }
-    if (
-      !confirmPaidCall(
-        `Provider: Shotstack\nTimeline: 5-second 9:16 MP4 with ${MOTION_PRESETS.find((preset) => preset.id === payload.motionPreset)?.label.toLowerCase()} motion\nAssets: public image${payload.audioKey ? ` + ${Math.min(5, payload.audioLength ?? 5).toFixed(2)}s narration` : ''}\nEstimated cost: usage-based per rendered second`,
-      )
-    ) {
-      setRenderAttemptStartedAt(null)
-      toast.info(
-        'Render cancelled',
-        'Preflight passed; no paid Shotstack call was made.',
-      )
-      return
     }
     void enqueue(
       'motionbrief-render-final',
