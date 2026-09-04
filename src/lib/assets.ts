@@ -7,6 +7,19 @@ export type StoredAsset = {
   storedAt: string
 }
 
+const MIME_EXTENSIONS: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'image/jpeg': 'jpg',
+  'video/mp4': 'mp4',
+}
+
+export function assetFileExtension(mimeType: string): string {
+  const normalized = mimeType.toLowerCase().split(';')[0].trim()
+  return MIME_EXTENSIONS[normalized]
+    ?? normalized.split('/')[1]?.replace(/[^a-z0-9]/g, '')
+    ?? 'bin'
+}
+
 function isStoredAsset(value: unknown): value is StoredAsset {
   if (!value || typeof value !== 'object') return false
   const asset = value as Record<string, unknown>

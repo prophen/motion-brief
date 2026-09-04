@@ -216,7 +216,13 @@ The contract itself is no longer ambiguous. The first paid smoke test should sti
 
 Two submissions to `luma/agent/ray/v3.2/image-to-video` returned `502 upstream_provider_error`. The stored DeepSpace image URL was independently verified as a public HTTPS JPEG (`200`), so the failure is upstream of MotionBrief's asset handoff. The live FAL catalog still marks Luma active, but it should not be retried for this MVP until its provider recovers.
 
-**Recommended fallback: `wan/v2.6/image-to-video/flash`.** It is active, commercial, and runnable, billed at **$0.05 per second**. Required input is `{ prompt, image_url }`. For MotionBrief use `{ duration: "5", resolution: "720p", generate_audio: false, multi_shots: false, enable_safety_checker: true }`. The prompt is limited to 1,500 characters. Output is `{ video: { url, content_type?, file_name?, file_size?, width?, height?, fps?, duration?, num_frames? }, seed, actual_prompt? }`. A five-second run has a published provider ceiling of $0.25 before any documented silent-video discount; retain a `maxCostUsd: 0.25` gate. Based on the observed DeepSpace reservation multiplier for Luma ($0.50 provider price → $0.65 reservation), show an estimated account reservation of $0.325 and let the ledger remain authoritative.
+**Recommended fallback: `wan/v2.6/image-to-video/flash`.** It is active, commercial, and runnable, billed at **$0.05 per second**. Required input is `{ prompt, image_url }`. For MotionBrief use `{ duration: "5", resolution: "720p", generate_audio: false, multi_shots: false, enable_safety_checker: true }`. The prompt is limited to 1,500 characters. Output is `{ video: { url, content_type?, file_name?, file_size?, width?, height?, fps?, duration?, num_frames? }, seed, actual_prompt? }`. A five-second run has a published provider cost of about $0.25. Per DeepSpace support guidance received September 3, 2026, omit an explicit `maxCostUsd`; DeepSpace now applies and reconciles the temporary reserve automatically.
+
+### Provider-fix follow-up — September 3, 2026
+
+- FAL motion requests now omit the explicit `$0.25` cost cap so the platform can manage its temporary reserve.
+- ElevenLabs still returns valid MP3 bytes with the MIME type `audio/mpeg`. MotionBrief now maps that MIME type to an `.mp3` stored filename because Shotstack rejects an otherwise valid narration URL ending in `.mpeg`.
+- Narration assets stored before this correction keep their old `.mpeg` keys and must be re-stored or regenerated before a Shotstack render.
 
 Other live fallbacks inspected without generation: `bytedance/seedance-2.0/mini/image-to-video` remains runnable at $0.007 per 1,000 tokens but lacks a predictable duration-only total; `fal-ai/ltx-2.3/image-to-video/fast` is runnable at $0.06 per second but has a six-second minimum and 1080p minimum, making it a poorer fit for the five-second MVP.
 

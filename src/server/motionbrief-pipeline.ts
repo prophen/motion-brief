@@ -2,7 +2,7 @@ import { apiWorkerFetch, platformWorkerFetch } from 'deepspace/worker'
 import type { Env } from '../../worker.js'
 import { countWords, NARRATION_HARD_MAX_WORDS, NARRATION_TARGET_MIN_WORDS } from '../lib/narration.js'
 import { DEFAULT_MOTIONBRIEF_VOICE_ID, isMotionBriefVoiceId } from '../lib/voices.js'
-import { decodeBase64DataUrl, type StoredAsset } from '../lib/assets.js'
+import { assetFileExtension, decodeBase64DataUrl, type StoredAsset } from '../lib/assets.js'
 import { buildShotstackEdit } from '../lib/shotstack.js'
 import { sanitizeDiagnosticBody } from '../lib/provider-diagnostics.js'
 import { formatIntegrationError } from '../lib/integration-errors.js'
@@ -13,7 +13,6 @@ export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
 export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
 export const FAL_STILL_MAX_COST_USD = 0.04
 export const FAL_MOTION_MODEL = 'wan/v2.6/image-to-video/flash'
-export const FAL_MOTION_MAX_COST_USD = 0.25
 export const ELEVENLABS_MODEL_ID = 'eleven_flash_v2_5'
 export const ELEVENLABS_OUTPUT_FORMAT = 'mp3_44100_128'
 
@@ -222,7 +221,6 @@ export async function submitFalMotion(
   if (imageUrl.protocol !== 'https:') throw new Error('motion_image_must_use_https')
   const response = asObject(await callIntegration(env, 'fal/run-model', {
     model_id: FAL_MOTION_MODEL,
-    maxCostUsd: FAL_MOTION_MAX_COST_USD,
     input: {
       prompt: input.prompt.trim(),
       image_url: imageUrl.toString(),
@@ -349,7 +347,7 @@ export async function pollShotstackRender(env: Env, renderId: string): Promise<S
 }
 
 function safeAssetKey(projectId: string, kind: StoredAsset['kind'], mimeType: string): string {
-  const extension = mimeType.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'bin'
+  const extension = assetFileExtension(mimeType)
   const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, '-')
   return `motionbrief/${safeProjectId}/${kind}-${crypto.randomUUID()}.${extension}`
 }

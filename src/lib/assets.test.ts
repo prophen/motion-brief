@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeBase64DataUrl, latestStoredAsset, normalizeAssetManifest, parseAssetManifest, upsertAssetManifest, type StoredAsset } from './assets'
+import { assetFileExtension, decodeBase64DataUrl, latestStoredAsset, normalizeAssetManifest, parseAssetManifest, upsertAssetManifest, type StoredAsset } from './assets'
 
 const image: StoredAsset = { kind: 'image', key: 'one.png', url: '/one', mimeType: 'image/png', sourceUrl: 'https://example.com/one', storedAt: '2026-09-02T00:00:00Z' }
 const updated: StoredAsset = { ...image, url: '/updated', storedAt: '2026-09-02T01:00:00Z' }
@@ -22,5 +22,11 @@ describe('asset manifests', () => {
     expect(decoded.mimeType).toBe('audio/mpeg')
     expect([...new Uint8Array(decoded.bytes)]).toEqual([72, 105])
     expect(() => decodeBase64DataUrl('https://example.com/audio.mp3')).toThrow('narration_audio_data_url_invalid')
+  })
+
+  it('stores MPEG audio with the MP3 filename Shotstack accepts', () => {
+    expect(assetFileExtension('audio/mpeg')).toBe('mp3')
+    expect(assetFileExtension('audio/mpeg; charset=binary')).toBe('mp3')
+    expect(assetFileExtension('image/png')).toBe('png')
   })
 })
