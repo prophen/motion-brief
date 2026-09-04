@@ -22,7 +22,11 @@ test.describe('Smoke tests', () => {
     const errors = captureConsoleErrors(page)
     await page.goto('/')
     await waitForApp(page)
-    await expect(page.getByTestId('static-landing')).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        name: 'Turn one rough idea into something you can see and hear.',
+      }),
+    ).toBeVisible()
     expect(errors).toEqual([])
   })
 
@@ -39,7 +43,11 @@ test.describe('Smoke tests', () => {
         offenders.push(`ws: ${ws.url()}`)
     })
     await page.goto('/')
-    await expect(page.getByTestId('static-landing')).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        name: 'Turn one rough idea into something you can see and hear.',
+      }),
+    ).toBeVisible()
     await page.waitForTimeout(1500)
     expect(offenders).toEqual([])
   })
@@ -50,11 +58,9 @@ test.describe('Smoke tests', () => {
       timeout: 15000,
     })
     await expect(
-      page.getByRole('heading', { name: 'Build the brief. Ship the frame.' }),
+      page.getByRole('heading', { name: 'Shape the brief' }),
     ).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: /preview pipeline/i }),
-    ).toBeVisible()
+    await expect(page.getByLabel('Creator prompt')).toBeVisible()
     await expect(page.getByText('This is a placeholder page.')).toHaveCount(0)
     await expect(page).toHaveTitle(/MotionBrief/)
   })
