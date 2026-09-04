@@ -53,7 +53,7 @@ export default function LandingPage() {
             <p className="mb-5 text-xs font-semibold uppercase tracking-[.24em] text-primary">
               Prompt to campaign concept
             </p>
-            <h1 className="max-w-3xl text-5xl font-semibold leading-[.94] tracking-[-.06em] sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-3xl text-5xl font-semibold leading-[.94] tracking-[-.025em] sm:text-6xl lg:text-7xl">
               Turn one rough idea into something you can see and hear.
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">
