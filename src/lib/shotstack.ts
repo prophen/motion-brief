@@ -7,22 +7,11 @@ function requireHttpsUrl(value: string, error: string): string {
 }
 
 export function buildShotstackEdit(input: { headline: string; videoUrl: string; videoLength?: number; audioUrl?: string; audioLength?: number }) {
-  if (!input.headline.trim()) throw new Error('headline_required')
   // Stay below the measured media boundary and on a predictable tenth-second
   // boundary. Provider probes can report a source a frame shorter than browsers.
   const measuredVideoSeconds = Math.min(RENDER_SECONDS, Math.max(0.1, input.videoLength ?? RENDER_SECONDS))
   const renderSeconds = Math.max(0.1, Math.floor((measuredVideoSeconds - 0.05) * 10) / 10)
-  const tracks: Array<{ clips: unknown[] }> = [{
-    clips: [{
-      asset: {
-        type: 'text', text: input.headline.trim().toUpperCase(), width: 820, height: 180,
-        font: { family: 'Open Sans', color: '#f4f1e8', size: 54, weight: 700, lineHeight: 1 },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        stroke: { width: 1, color: '#171714' },
-      },
-      start: 0, length: renderSeconds, position: 'bottom',
-    }],
-  }]
+  const tracks: Array<{ clips: unknown[] }> = []
   if (input.audioUrl) {
     const measuredAudioSeconds = Math.min(renderSeconds, Math.max(0.1, input.audioLength ?? renderSeconds))
     const audioLength = Math.max(0.1, Math.floor((measuredAudioSeconds - 0.05) * 10) / 10)

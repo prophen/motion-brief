@@ -310,7 +310,6 @@ export async function submitShotstackRender(
   env: Env,
   input: { headline: string; videoKey: string; videoLength?: number; audioKey?: string; audioLength?: number },
 ): Promise<{ renderId: string }> {
-  if (!input.headline.trim()) throw new Error('headline_required')
   if (!input.videoKey.trim()) throw new Error('stored_video_required')
   const edit = buildShotstackEdit({
     headline: input.headline,

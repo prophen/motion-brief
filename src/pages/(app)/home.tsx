@@ -247,7 +247,6 @@ export default function HomePage() {
     if (!recover && !videoAsset) return toast.error('Motion required', 'Generate and store the five-second motion clip first.')
     if (!recover && narrationNeedsMp3Repair) return toast.info('Repair narration first', 'Use the free MP3 repair action before sending this project to Shotstack.')
     if (!recover && draft.narration.trim() && !audioAsset) return toast.error('Narration audio required', 'Generate narration first, or clear the narration field for a silent render.')
-    if (!recover && !draft.headline.trim()) return toast.error('Headline required', 'Enter one headline before rendering.')
     const attemptStartedAt = Date.now() - 5000
     setRenderAttemptStartedAt(attemptStartedAt)
     setQueuing(true)
@@ -470,7 +469,6 @@ export default function HomePage() {
               <div className="sticky top-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.28)]">
                 <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
                   {renderUrl ? <video src={renderUrl} aria-label="Final MotionBrief video" className="absolute inset-0 h-full w-full object-cover" controls playsInline loop /> : videoUrl ? <video src={videoUrl} aria-label="Generated MotionBrief animation" className="absolute inset-0 h-full w-full object-cover" controls playsInline loop /> : imageUrl ? <img src={imageUrl} alt="Generated MotionBrief campaign visual" className="absolute inset-0 h-full w-full object-cover" /> : <><div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(255,107,53,.5),transparent_28%),linear-gradient(145deg,#40372a_0%,#151511_58%,#080807_100%)]" /><div className="absolute left-[12%] top-[18%] h-[38%] w-[70%] rotate-[-8deg] border border-white/20 bg-white/5 backdrop-blur-sm" /></>}
-                  {!renderUrl && <div className="pointer-events-none absolute inset-x-8 bottom-10 flex min-h-20 items-center justify-center"><p className="text-center text-3xl font-black uppercase leading-none tracking-[-.04em] text-[#f4f1e8] [text-shadow:0_1px_2px_#171714]">{draft.headline || 'Your headline'}</p></div>}
                 </div>
                 {audioUrl && !renderUrl && <div className="border-t border-border p-3"><audio aria-label="Generated narration preview" src={audioUrl} controls className="w-full" /></div>}
                 <div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground"><span>9:16 · 5 seconds</span><span>{renderUrl ? 'Final MP4' : videoUrl ? 'Motion ready' : audioUrl ? 'Voiced concept' : imageUrl ? 'Visual ready' : 'Live preview'}</span></div>
@@ -492,7 +490,7 @@ export default function HomePage() {
 
           <div className="mt-6 rounded-xl border border-border bg-card p-4">
             <h3 className="font-medium">{draft.status === 'complete' ? 'Package complete' : 'Finish your package'}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Shotstack combines the five-second motion, narration, and headline. The package also keeps your editable strategy and generated assets.</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Shotstack combines the five-second motion and narration into a clean final video. The editable campaign headline remains in your brief and package.</p>
             <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100">Media links are viewable by anyone who receives them. Your editable project remains private to your account.</p>
             <div className="mt-4 grid gap-2">
               <Button onClick={completePackage} disabled={!packageReady || draft.status === 'complete'}><PackageCheck />{draft.status === 'complete' ? 'Creative package ready' : 'Mark package ready'}</Button>

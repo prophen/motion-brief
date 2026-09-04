@@ -6,23 +6,15 @@ describe('Shotstack edit contract', () => {
     const edit = buildShotstackEdit({ headline: 'MAKE IT MOVE', videoUrl: 'https://motionbrief.app.space/api/files/clip.mp4' })
     expect(edit.duration).toBe(4.9)
     expect(edit.output).toMatchObject({ format: 'mp4', aspectRatio: '9:16', resolution: 'hd' })
-    expect(edit.timeline.tracks).toHaveLength(2)
-    expect(edit.timeline.tracks[1].clips[0]).toMatchObject({ asset: { type: 'video', transcode: true, volume: 0 }, length: 4.9, fit: 'crop' })
-    expect(edit.timeline.tracks[0].clips[0]).toMatchObject({
-      position: 'bottom',
-      asset: {
-        type: 'text', width: 820, height: 180,
-        text: 'MAKE IT MOVE',
-        font: { family: 'Open Sans', color: '#f4f1e8', size: 54, weight: 700, lineHeight: 1 },
-        stroke: { width: 1, color: '#171714' },
-      },
-    })
+    expect(edit.timeline.tracks).toHaveLength(1)
+    expect(edit.timeline.tracks[0].clips[0]).toMatchObject({ asset: { type: 'video', transcode: true, volume: 0 }, length: 4.9, fit: 'crop' })
+    expect(JSON.stringify(edit)).not.toContain('MAKE IT MOVE')
   })
 
-  it('adds narration between the headline and video tracks', () => {
+  it('adds narration before the video track', () => {
     const edit = buildShotstackEdit({ headline: 'MOVE', videoUrl: 'https://example.com/video.mp4', audioUrl: 'https://example.com/audio.mp3', audioLength: 3.9 })
-    expect(edit.timeline.tracks).toHaveLength(3)
-    expect(edit.timeline.tracks[1].clips[0]).toMatchObject({ asset: { type: 'audio', src: 'https://example.com/audio.mp3', volume: 1 }, length: 3.8 })
+    expect(edit.timeline.tracks).toHaveLength(2)
+    expect(edit.timeline.tracks[0].clips[0]).toMatchObject({ asset: { type: 'audio', src: 'https://example.com/audio.mp3', volume: 1 }, length: 3.8 })
   })
 
   it('never declares clips longer than the measured source video', () => {
