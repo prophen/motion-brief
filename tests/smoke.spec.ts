@@ -77,12 +77,14 @@ test.describe('Smoke tests', () => {
     page,
   }) => {
     const prompt = 'A tiny camera captures an overnight train journey'
-    await page.goto('/home?new=1')
+    // Entering through the nav lands on plain `/home`, where a signed-out
+    // visitor still sees an empty studio and can begin typing.
+    await page.goto('/home')
     await page.getByLabel('Creator prompt').fill(prompt)
 
-    // OAuth can return without the original `?new=1`. A pending prompt must
-    // win over the signed-in user's latest saved project in that case.
-    await page.goto('/home')
+    // Simulate OAuth returning to the same plain route. A pending prompt must
+    // become explicit new-project intent before signed-in records can load.
+    await page.reload()
 
     await expect(page).toHaveURL(/\/home\?new=1$/)
     await expect(page.getByLabel('Creator prompt')).toHaveValue(prompt)

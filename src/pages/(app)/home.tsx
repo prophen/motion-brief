@@ -279,10 +279,15 @@ export default function HomePage() {
   // OAuth may leave and reload the app. Keep an unsaved new-project prompt in
   // this tab so the auth round trip does not discard what the creator typed.
   useEffect(() => {
-    if ((!creatingNew && !restoringPendingDraft) || recordId) return
+    const anonymousUnsavedDraft = !isSignedIn && !recordId
+    if (
+      (!creatingNew && !restoringPendingDraft && !anonymousUnsavedDraft) ||
+      recordId
+    )
+      return
     pendingCreatorPrompt.current = draft.prompt
     writeCreatorPromptDraft(window.sessionStorage, draft.prompt)
-  }, [creatingNew, draft.prompt, recordId, restoringPendingDraft])
+  }, [creatingNew, draft.prompt, isSignedIn, recordId, restoringPendingDraft])
 
   async function save() {
     if (!isSignedIn)
