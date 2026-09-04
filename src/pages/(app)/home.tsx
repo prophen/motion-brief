@@ -450,7 +450,7 @@ export default function HomePage() {
     if (
       !recover &&
       !confirmPaidCall(
-        'Provider: FAL\nModel: Wan 2.6 Image-to-Video Flash\nDuration: 5 seconds\nEstimated provider cost: $0.25\nDeepSpace manages and reconciles the temporary reserve.',
+        'Provider: FAL\nModel: Cosmos Predict 2.5 2B\nOutput: up to 93 frames, MP4\nPublished provider cost: $0.20 per video\nDeepSpace manages and reconciles the temporary reserve.',
       )
     )
       return
@@ -1297,7 +1297,7 @@ export default function HomePage() {
                 <Play />
                 {motionJob?.result?.temporaryVideoUrl
                   ? 'Retry video storage · $0'
-                  : 'Animate · est. $0.25'}
+                  : 'Animate · $0.20'}
               </Button>
             </div>
             <aside

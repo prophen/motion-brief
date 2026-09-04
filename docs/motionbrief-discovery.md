@@ -230,6 +230,10 @@ The first Wan submission also returned `502 upstream_provider_error` when its `i
 
 A second deployed Wan submission using the healthy provider-native `v3b.fal.media` URL returned the same `502 upstream_provider_error`. Production logs identify separate failed job IDs before and after that URL change. Combined with the earlier Luma failures, this isolates the blocker to DeepSpace's FAL video submission path or FAL's shared video backend rather than MotionBrief's payload, chosen video provider, or asset host. Do not spend on further retries until that integration path is repaired or provides more specific upstream diagnostics.
 
+### Lower-cost motion model update (2026-09-03)
+
+Free catalog discovery confirmed `fal-ai/cosmos-predict-2.5/image-to-video` is active, commercial, runnable, and billed at a fixed **$0.20 per video**. It accepts `prompt` and `image_url`, produces MP4 with `video_output_type: "X264 (.mp4)"`, and supports up to 93 frames. MotionBrief now uses 93 frames, 35 inference steps, guidance scale 7, high quality, and asynchronous output. Unlike Wan, Cosmos does not expose an exact duration or aspect-ratio parameter; the final Shotstack edit uses the measured clip duration, caps the final output at five seconds, and crops to 9:16.
+
 ## Provider controls (2026-09-02)
 
 An owner-only server-side diagnostic used the same `apiWorkerFetch` path as MotionBrief and captured sanitized bodies plus correlation headers.

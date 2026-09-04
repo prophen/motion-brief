@@ -246,7 +246,7 @@ export async function runJob(
     const resume = job.resumeFrom as
       { requestId: string; polls: number } | undefined
     if (!resume) {
-      ctx.progress(0.05, 'Submitting one five-second FAL video')
+      ctx.progress(0.05, 'Submitting one fixed-price FAL video')
       const submission = await submitFalMotion(env, {
         prompt: payload.motionPrompt,
         imageUrl: payload.imageUrl,

@@ -27,7 +27,7 @@ export const MOTIONBRIEF_PIPELINE_VERSION = 1
 export const OPENAI_BRIEF_MODEL = 'gpt-5.6-terra'
 export const FAL_STILL_MODEL = 'bytedance/seedream/v5/lite/text-to-image'
 export const FAL_STILL_MAX_COST_USD = 0.04
-export const FAL_MOTION_MODEL = 'wan/v2.6/image-to-video/flash'
+export const FAL_MOTION_MODEL = 'fal-ai/cosmos-predict-2.5/image-to-video'
 export const ELEVENLABS_MODEL_ID = 'eleven_flash_v2_5'
 export const ELEVENLABS_OUTPUT_FORMAT = 'mp3_44100_128'
 
@@ -303,11 +303,12 @@ export async function submitFalMotion(
       input: {
         prompt: input.prompt.trim(),
         image_url: imageUrl.toString(),
-        resolution: '720p',
-        duration: '5',
-        generate_audio: false,
-        multi_shots: false,
-        enable_safety_checker: true,
+        num_frames: 93,
+        num_inference_steps: 35,
+        guidance_scale: 7,
+        video_output_type: 'X264 (.mp4)',
+        video_quality: 'high',
+        sync_mode: false,
       },
     }),
   )
