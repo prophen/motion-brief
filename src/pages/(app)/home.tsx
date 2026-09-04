@@ -218,10 +218,7 @@ export default function HomePage() {
     : '[]'
   const imageAsset = latestStoredAsset(projectAssetManifest, 'image')
   const audioAsset = latestStoredAsset(projectAssetManifest, 'audio')
-  const renderAsset =
-    draft.status === 'complete'
-      ? latestStoredAsset(projectAssetManifest, 'render')
-      : undefined
+  const renderAsset = latestStoredAsset(projectAssetManifest, 'render')
   const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : ''
   const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : ''
   const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : ''
@@ -568,10 +565,14 @@ export default function HomePage() {
     const absoluteAudioUrl = audioUrl
       ? new URL(audioUrl, window.location.origin).href
       : undefined
+    const absoluteRenderUrl = renderUrl
+      ? new URL(renderUrl, window.location.origin).href
+      : undefined
     return buildCreativePackageMarkdown({
       ...draft,
       imageUrl: absoluteImageUrl,
       audioUrl: absoluteAudioUrl,
+      renderUrl: absoluteRenderUrl,
     })
   }
 

@@ -10,6 +10,7 @@ export type CreativePackageInput = {
   motionPreset?: string
   imageUrl?: string
   audioUrl?: string
+  renderUrl?: string
 }
 
 export function buildCreativePackageMarkdown(
@@ -27,7 +28,7 @@ export function buildCreativePackageMarkdown(
     `## Narration\n${input.narration.trim() || 'Silent concept'}`,
   ]
 
-  if (input.imageUrl || input.audioUrl) {
+  if (input.imageUrl || input.audioUrl || input.renderUrl) {
     const assets = [
       '## Shareable generated assets',
       '> Anyone with these media links can view or download them. The editable MotionBrief project remains private to its owner.',
@@ -36,6 +37,8 @@ export function buildCreativePackageMarkdown(
       assets.push(`![Generated campaign visual](${input.imageUrl})`)
     if (input.audioUrl)
       assets.push(`[Listen to or download the narration](${input.audioUrl})`)
+    if (input.renderUrl)
+      assets.push(`[Watch or download the final MP4](${input.renderUrl})`)
     sections.push(assets.join('\n\n'))
   }
   sections.push('---\nCreated with MotionBrief')

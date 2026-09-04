@@ -17,6 +17,7 @@ describe('creative package export', () => {
       narration: 'Every ordinary walk can hold a scene worth keeping.',
       imageUrl: 'https://motionbrief.app.space/image.jpg',
       audioUrl: 'https://motionbrief.app.space/voice.mp3',
+      renderUrl: 'https://motionbrief.app.space/final.mp4',
     })
     expect(result).toContain('# Small Camera')
     expect(result).toContain('## Shareable generated assets')
@@ -26,6 +27,9 @@ describe('creative package export', () => {
     )
     expect(result).toContain(
       '[Listen to or download the narration](https://motionbrief.app.space/voice.mp3)',
+    )
+    expect(result).toContain(
+      '[Watch or download the final MP4](https://motionbrief.app.space/final.mp4)',
     )
   })
 
