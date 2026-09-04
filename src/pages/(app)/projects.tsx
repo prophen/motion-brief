@@ -9,7 +9,10 @@ import {
   EmptyState,
   useToast,
 } from '../../components/ui'
-import type { MotionProject } from '../../lib/motion-project'
+import {
+  displayedProjectStatus,
+  type MotionProject,
+} from '../../lib/motion-project'
 
 const statusLabel: Record<MotionProject['status'], string> = {
   draft: 'Draft',
@@ -110,50 +113,51 @@ export default function ProjectsPage() {
           />
         ) : (
           <div className="grid gap-4 py-8 sm:grid-cols-2 lg:grid-cols-3">
-            {records.map((record) => (
-              <article
-                key={record.recordId}
-                className="flex min-h-48 flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_12px_45px_rgba(0,0,0,.14)]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <Badge
-                    variant={
-                      record.data.status === 'complete' ? 'success' : 'outline'
-                    }
-                  >
-                    {statusLabel[record.data.status] ?? 'Draft'}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Delete ${record.data.title || 'project'}`}
-                    loading={deletingId === record.recordId}
-                    disabled={!ready || deletingId !== null}
-                    onClick={() =>
-                      removeProject(record.recordId, record.data.title)
-                    }
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-                <h2 className="mt-5 line-clamp-2 text-xl font-semibold tracking-[-.025em]">
-                  {record.data.title || 'Untitled creative brief'}
-                </h2>
-                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                  {record.data.prompt || 'No creator prompt yet.'}
-                </p>
-                <Link
-                  className={buttonVariants({
-                    variant: 'outline',
-                    className: 'mt-auto pt-2',
-                  })}
-                  to={`/home?project=${encodeURIComponent(record.recordId)}`}
+            {records.map((record) => {
+              const status = displayedProjectStatus(record.data)
+              return (
+                <article
+                  key={record.recordId}
+                  className="flex min-h-48 flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_12px_45px_rgba(0,0,0,.14)]"
                 >
-                  <FolderOpen />
-                  Open project
-                </Link>
-              </article>
-            ))}
+                  <div className="flex items-start justify-between gap-3">
+                    <Badge
+                      variant={status === 'complete' ? 'success' : 'outline'}
+                    >
+                      {statusLabel[status] ?? 'Draft'}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${record.data.title || 'project'}`}
+                      loading={deletingId === record.recordId}
+                      disabled={!ready || deletingId !== null}
+                      onClick={() =>
+                        removeProject(record.recordId, record.data.title)
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                  <h2 className="mt-5 line-clamp-2 text-xl font-semibold tracking-[-.025em]">
+                    {record.data.title || 'Untitled creative brief'}
+                  </h2>
+                  <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                    {record.data.prompt || 'No creator prompt yet.'}
+                  </p>
+                  <Link
+                    className={buttonVariants({
+                      variant: 'outline',
+                      className: 'mt-auto pt-2',
+                    })}
+                    to={`/home?project=${encodeURIComponent(record.recordId)}`}
+                  >
+                    <FolderOpen />
+                    Open project
+                  </Link>
+                </article>
+              )
+            })}
           </div>
         )}
       </div>

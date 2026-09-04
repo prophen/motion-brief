@@ -304,14 +304,16 @@ export default function HomePage() {
     }
     setSaving(true)
     try {
-      if (recordId) await putConfirmed(recordId, { ...values, status: 'ready' })
+      const savedStatus = draft.status === 'complete' ? 'complete' : 'ready'
+      if (recordId)
+        await putConfirmed(recordId, { ...values, status: savedStatus })
       else {
         const createdId = await createConfirmed({ ...values, status: 'ready' })
         setRecordId(createdId)
         loadedRecord.current = createdId
         setSearchParams({ project: createdId }, { replace: true })
       }
-      setDraft({ ...values, status: 'ready' })
+      setDraft({ ...values, status: savedStatus })
       toast.success(
         'Brief saved',
         'Your editable concept is synced in DeepSpace.',

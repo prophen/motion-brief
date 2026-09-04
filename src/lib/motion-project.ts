@@ -1,5 +1,6 @@
 import { DEFAULT_MOTIONBRIEF_VOICE_ID } from './voices'
 import { DEFAULT_MOTION_PRESET, type MotionPreset } from './motion-presets'
+import { latestStoredAsset } from './assets'
 
 export type MotionProject = {
   title: string
@@ -47,4 +48,13 @@ export const newMotionProject: MotionProject = {
 
 export function freshMotionProject(): MotionProject {
   return { ...newMotionProject }
+}
+
+export function displayedProjectStatus(
+  project: MotionProject,
+): MotionProject['status'] {
+  return project.status === 'complete' ||
+    latestStoredAsset(project.assetManifest, 'render')
+    ? 'complete'
+    : project.status
 }
