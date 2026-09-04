@@ -1,33 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuthProfileReady, useJobs, useMutations, useQuery } from 'deepspace'
-import { Check, Clipboard, Download, FileText, Image, Mic2, PackageCheck, Save, Sparkles } from 'lucide-react'
+import { Check, Clipboard, Download, FileText, FolderOpen, Image, Mic2, PackageCheck, Plus, Save, Sparkles } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button, buttonVariants, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, useToast } from '../../components/ui'
 import { SCOPE_ID } from '../../constants'
 import { latestStoredAsset, normalizeAssetManifest, upsertAssetManifest, type StoredAsset } from '../../lib/assets'
 import { buildCreativePackageMarkdown, safePackageFilename } from '../../lib/creative-package'
 import { countWords, narrationFitsFiveSeconds, NARRATION_HARD_MAX_WORDS } from '../../lib/narration'
-import { DEFAULT_MOTIONBRIEF_VOICE_ID, MOTIONBRIEF_VOICES } from '../../lib/voices'
-
-type Project = {
-  title: string
-  prompt: string
-  audience: string
-  objective: string
-  visualDirection: string
-  motionDirection: string
-  narration: string
-  voiceId: string
-  headline: string
-  stillPrompt: string
-  motionPrompt: string
-  pipelineVersion: number
-  assetManifest: string
-  imageUrl: string
-  videoUrl: string
-  audioUrl: string
-  renderUrl: string
-  status: 'draft' | 'ready' | 'rendering' | 'complete'
-}
+import { freshMotionProject, newMotionProject, type MotionProject as Project } from '../../lib/motion-project'
+import { MOTIONBRIEF_VOICES } from '../../lib/voices'
 
 type PipelineResult = {
   projectId: string
@@ -38,27 +19,6 @@ type PipelineResult = {
   temporaryImageUrl?: string
   temporaryAudioUrl?: string
   storageError?: string
-}
-
-const seed: Project = {
-  title: 'Untitled creative brief',
-  prompt: '',
-  audience: 'Curious creators building for short-form platforms',
-  objective: 'Turn one clear idea into a campaign-ready concept.',
-  visualDirection: 'Editorial still, tactile light, one decisive focal point, portrait-safe composition.',
-  motionDirection: 'Use the still and narration as the foundation for a future motion treatment.',
-  narration: 'One clear idea becomes a campaign people can feel.',
-  voiceId: DEFAULT_MOTIONBRIEF_VOICE_ID,
-  headline: 'MAKE THE IDEA VISIBLE',
-  stillPrompt: '',
-  motionPrompt: '',
-  pipelineVersion: 1,
-  assetManifest: '[]',
-  imageUrl: '',
-  videoUrl: '',
-  audioUrl: '',
-  renderUrl: '',
-  status: 'draft',
 }
 
 const steps = [
@@ -88,11 +48,14 @@ function latestJob(jobs: ReturnType<typeof useJobs<unknown, PipelineResult>>['jo
 
 export default function HomePage() {
   const { isSignedIn } = useAuthProfileReady({ requireUser: true })
-  const { records } = useQuery<Project>('motion-projects', { orderBy: 'updatedAt', orderDir: 'desc', limit: 1 })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedProjectId = searchParams.get('project')
+  const creatingNew = searchParams.get('new') === '1'
+  const { records, status: recordsStatus } = useQuery<Project>('motion-projects', { orderBy: 'updatedAt', orderDir: 'desc', limit: 100 })
   const { createConfirmed, putConfirmed, ready } = useMutations<Project>('motion-projects')
   const { enqueue, jobs } = useJobs<unknown, PipelineResult>(SCOPE_ID)
   const toast = useToast()
-  const [draft, setDraft] = useState(seed)
+  const [draft, setDraft] = useState(freshMotionProject)
   const [recordId, setRecordId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [queuing, setQueuing] = useState(false)
@@ -101,7 +64,9 @@ export default function HomePage() {
   const appliedStillJob = useRef<string | null>(null)
   const appliedVoiceJob = useRef<string | null>(null)
 
-  const stored = records[0]
+  const stored = requestedProjectId
+    ? records.find(record => record.recordId === requestedProjectId)
+    : creatingNew ? undefined : records[0]
   const imageAsset = latestStoredAsset(draft.assetManifest, 'image')
   const audioAsset = latestStoredAsset(draft.assetManifest, 'audio')
   const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : draft.imageUrl
@@ -116,11 +81,18 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    if (creatingNew) {
+      if (loadedRecord.current === 'new') return
+      loadedRecord.current = 'new'
+      setRecordId(null)
+      setDraft(freshMotionProject())
+      return
+    }
     if (!stored || loadedRecord.current === stored.recordId) return
     loadedRecord.current = stored.recordId
     setRecordId(stored.recordId)
-    setDraft({ ...seed, ...stored.data, assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]') })
-  }, [stored])
+    setDraft({ ...newMotionProject, ...stored.data, assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]') })
+  }, [creatingNew, stored])
 
   async function save() {
     if (!isSignedIn) return toast.info('Sign in to save', 'Saving and generation require an account.')
@@ -132,7 +104,12 @@ export default function HomePage() {
     setSaving(true)
     try {
       if (recordId) await putConfirmed(recordId, { ...values, status: 'ready' })
-      else setRecordId(await createConfirmed({ ...values, status: 'ready' }))
+      else {
+        const createdId = await createConfirmed({ ...values, status: 'ready' })
+        setRecordId(createdId)
+        loadedRecord.current = createdId
+        setSearchParams({ project: createdId }, { replace: true })
+      }
       setDraft({ ...values, status: 'ready' })
       toast.success('Brief saved', 'Your editable concept is synced in DeepSpace.')
     } catch (error) {
@@ -258,20 +235,46 @@ export default function HomePage() {
     { job: undefined, done: draft.status === 'complete' },
   ]
 
+  if (requestedProjectId && recordsStatus === 'ready' && !stored) {
+    return (
+      <div className="mx-auto flex min-h-full max-w-xl flex-col items-center justify-center px-5 text-center">
+        <FolderOpen className="mb-4 size-10 text-muted-foreground" aria-hidden />
+        <h1 className="text-2xl font-semibold">Project not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">It may have been deleted, or it belongs to another account.</p>
+        <Link className={buttonVariants({ className: 'mt-5' })} to="/projects">View your projects</Link>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-full bg-background text-foreground">
       <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[minmax(0,1fr)_390px]">
         <section aria-labelledby="studio-heading" className="min-w-0 border-border lg:border-r">
           <header className="border-b border-border px-5 py-7 md:px-9">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Prompt to campaign concept</p>
-            <h1 id="studio-heading" className="max-w-4xl text-3xl font-semibold tracking-[-.04em] md:text-5xl">Shape the idea. See it. Hear it.</h1>
-            <p className="mt-3 max-w-2xl text-muted-foreground">MotionBrief turns one rough prompt into an editable creative brief, a campaign visual, and a voiced concept package.</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save />Save brief</Button>
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Prompt to campaign concept</p>
+                <h1 id="studio-heading" className="max-w-4xl text-3xl font-semibold tracking-[-.04em] md:text-5xl">Shape the idea. See it. Hear it.</h1>
+                <p className="mt-3 max-w-2xl text-muted-foreground">MotionBrief turns one rough prompt into an editable creative brief, a campaign visual, and a voiced concept package.</p>
+              </div>
+              <div className="flex flex-wrap gap-2 xl:justify-end">
+                <Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save />Save brief</Button>
+                <Link className={buttonVariants({ variant: 'outline' })} to="/home?new=1"><Plus />New project</Link>
+                <Link className={buttonVariants({ variant: 'outline' })} to="/projects"><FolderOpen />Projects</Link>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex flex-col gap-3 border-b border-border bg-shell/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-9">
+            <div>
+              <p className="text-sm font-medium">Production</p>
+              <p className="text-xs text-muted-foreground">Generate assets after saving your brief.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button onClick={generateStill} loading={stillJob?.status === 'queued' || stillJob?.status === 'running'} disabled={!recordId || (!draft.stillPrompt.trim() && !stillJob?.result?.temporaryImageUrl)}><Image />{stillJob?.result?.temporaryImageUrl ? 'Retry image storage · $0' : 'Generate visual · $0.035'}</Button>
               <Button onClick={generateNarration} loading={voiceJob?.status === 'queued' || voiceJob?.status === 'running'} disabled={!recordId || (!draft.narration.trim() && !voiceJob?.result?.temporaryAudioUrl)}><Mic2 />{voiceJob?.result?.temporaryAudioUrl ? 'Retry audio storage · $0' : `Narrate · est. $${narrationReservationEstimate(draft.narration).toFixed(4)}`}</Button>
             </div>
-          </header>
+          </div>
 
           <div className="grid gap-8 p-5 md:p-9 xl:grid-cols-[1fr_.72fr]">
             <div className="space-y-6">
