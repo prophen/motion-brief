@@ -44,11 +44,16 @@ export function normalizeAssetManifest(value: string): string {
 }
 
 export function assetBelongsToProject(asset: StoredAsset, projectId: string): boolean {
-  return !asset.projectId || asset.projectId === projectId
+  return asset.projectId === projectId
 }
 
-export function normalizeProjectAssetManifest(value: string, projectId: string): string {
-  return JSON.stringify(parseAssetManifest(normalizeAssetManifest(value)).filter(asset => assetBelongsToProject(asset, projectId)))
+export function normalizeProjectAssetManifest(value: string, projectId: string, legacyAssetKeys: Iterable<string> = []): string {
+  const confirmedLegacyKeys = new Set(legacyAssetKeys)
+  return JSON.stringify(parseAssetManifest(normalizeAssetManifest(value)).flatMap(asset => {
+    if (assetBelongsToProject(asset, projectId)) return [asset]
+    if (!asset.projectId && confirmedLegacyKeys.has(asset.key)) return [{ ...asset, projectId }]
+    return []
+  }))
 }
 
 export function upsertAssetManifest(value: string, asset: StoredAsset): string {

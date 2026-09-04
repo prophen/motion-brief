@@ -16,8 +16,9 @@ describe('asset manifests', () => {
     expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([inherited, own]), 'project-new'))).toEqual([own])
   })
 
-  it('keeps legacy canonical assets that predate project metadata', () => {
-    expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([image]), 'project-new'))).toEqual([image])
+  it('keeps only legacy assets confirmed by the active project job history', () => {
+    expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([image]), 'project-new'))).toEqual([])
+    expect(parseAssetManifest(normalizeProjectAssetManifest(JSON.stringify([image]), 'project-new', [image.key]))).toEqual([{ ...image, projectId: 'project-new' }])
   })
 
   it('upserts without duplicating an asset and finds the latest kind', () => {

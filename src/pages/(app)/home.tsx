@@ -82,7 +82,17 @@ export default function HomePage() {
   const stored = requestedProjectId
     ? records.find(record => record.recordId === requestedProjectId)
     : creatingNew ? undefined : records[0]
-  const projectAssetManifest = recordId ? normalizeProjectAssetManifest(draft.assetManifest, recordId) : '[]'
+  const briefJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-brief'], recordId), [jobs, recordId])
+  const stillJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-still', 'motionbrief-store-still'], recordId), [jobs, recordId])
+  const motionJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-motion', 'motionbrief-store-motion'], recordId), [jobs, recordId])
+  const voiceJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-narration', 'motionbrief-store-narration', 'motionbrief-restorage-narration'], recordId), [jobs, recordId])
+  const renderJob = useMemo(() => latestJob(jobs, ['motionbrief-render-final', 'motionbrief-store-render'], recordId), [jobs, recordId])
+  const preflightJob = useMemo(() => latestJob(jobs, ['motionbrief-preflight-render'], recordId), [jobs, recordId])
+  const legacyAssetKeys = useMemo(() => new Set(jobs
+    .filter(job => (job.payload as { projectId?: string } | undefined)?.projectId === recordId)
+    .map(job => job.result?.asset?.key)
+    .filter((key): key is string => Boolean(key))), [jobs, recordId])
+  const projectAssetManifest = recordId ? normalizeProjectAssetManifest(draft.assetManifest, recordId, legacyAssetKeys) : '[]'
   const imageAsset = latestStoredAsset(projectAssetManifest, 'image')
   const videoAsset = latestStoredAsset(projectAssetManifest, 'video')
   const audioAsset = latestStoredAsset(projectAssetManifest, 'audio')
@@ -92,12 +102,6 @@ export default function HomePage() {
   const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : ''
   const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : ''
   const narrationNeedsMp3Repair = Boolean(audioAsset && !audioAsset.key.toLowerCase().endsWith('.mp3'))
-  const briefJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-brief'], recordId), [jobs, recordId])
-  const stillJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-still', 'motionbrief-store-still'], recordId), [jobs, recordId])
-  const motionJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-motion', 'motionbrief-store-motion'], recordId), [jobs, recordId])
-  const voiceJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-narration', 'motionbrief-store-narration', 'motionbrief-restorage-narration'], recordId), [jobs, recordId])
-  const renderJob = useMemo(() => latestJob(jobs, ['motionbrief-render-final', 'motionbrief-store-render'], recordId), [jobs, recordId])
-  const preflightJob = useMemo(() => latestJob(jobs, ['motionbrief-preflight-render'], recordId), [jobs, recordId])
   const currentRenderActivity = useMemo(() => renderAttemptStartedAt === null ? undefined : [renderJob, preflightJob]
     .filter(job => job && Date.parse(job.enqueuedAt) >= renderAttemptStartedAt)
     .sort((a, b) => Date.parse(b!.enqueuedAt) - Date.parse(a!.enqueuedAt))[0], [preflightJob, renderAttemptStartedAt, renderJob])
@@ -122,7 +126,7 @@ export default function HomePage() {
 
   async function save() {
     if (!isSignedIn) return toast.info('Sign in to save', 'Saving and generation require an account.')
-    const scopedManifest = recordId ? normalizeProjectAssetManifest(draft.assetManifest, recordId) : '[]'
+    const scopedManifest = recordId ? normalizeProjectAssetManifest(draft.assetManifest, recordId, legacyAssetKeys) : '[]'
     const values = {
       ...draft,
       assetManifest: scopedManifest,
