@@ -63,6 +63,7 @@ export default function HomePage() {
   const appliedBriefJob = useRef<string | null>(null)
   const appliedStillJob = useRef<string | null>(null)
   const appliedVoiceJob = useRef<string | null>(null)
+  const jobsStartedHere = useRef(new Set<string>())
 
   const stored = requestedProjectId
     ? records.find(record => record.recordId === requestedProjectId)
@@ -124,7 +125,8 @@ export default function HomePage() {
     if (!confirmPaidCall('Provider: OpenAI\nModel: gpt-5.6-terra\nOutput: editable creative direction and copy')) return
     setQueuing(true)
     try {
-      await enqueue('motionbrief-generate-brief', { projectId: recordId, prompt: draft.prompt }, { maxAttempts: 1 })
+      const jobId = await enqueue('motionbrief-generate-brief', { projectId: recordId, prompt: draft.prompt }, { maxAttempts: 1 })
+      jobsStartedHere.current.add(jobId)
       toast.success('Brief queued', 'OpenAI is shaping the editable concept.')
     } catch (error) {
       toast.error('Could not queue', error instanceof Error ? error.message : 'Please try again.')
@@ -141,10 +143,12 @@ export default function HomePage() {
     setQueuing(true)
     try {
       if (recover) {
-        await enqueue('motionbrief-store-still', { projectId: recordId, sourceUrl: recover }, { maxAttempts: 1 })
+        const jobId = await enqueue('motionbrief-store-still', { projectId: recordId, sourceUrl: recover }, { maxAttempts: 1 })
+        jobsStartedHere.current.add(jobId)
         toast.success('Storage retry queued', 'Reusing the generated image at no generation cost.')
       } else {
-        await enqueue('motionbrief-generate-still', { projectId: recordId, stillPrompt: draft.stillPrompt }, { maxAttempts: 1 })
+        const jobId = await enqueue('motionbrief-generate-still', { projectId: recordId, stillPrompt: draft.stillPrompt }, { maxAttempts: 1 })
+        jobsStartedHere.current.add(jobId)
         toast.success('Visual queued', 'FAL is generating one campaign image.')
       }
     } catch (error) {
@@ -162,10 +166,12 @@ export default function HomePage() {
     setQueuing(true)
     try {
       if (recover) {
-        await enqueue('motionbrief-store-narration', { projectId: recordId, dataUrl: recover }, { maxAttempts: 1 })
+        const jobId = await enqueue('motionbrief-store-narration', { projectId: recordId, dataUrl: recover }, { maxAttempts: 1 })
+        jobsStartedHere.current.add(jobId)
         toast.success('Storage retry queued', 'Reusing the generated narration at no generation cost.')
       } else {
-        await enqueue('motionbrief-generate-narration', { projectId: recordId, narration: draft.narration, voiceId: draft.voiceId }, { maxAttempts: 1 })
+        const jobId = await enqueue('motionbrief-generate-narration', { projectId: recordId, narration: draft.narration, voiceId: draft.voiceId }, { maxAttempts: 1 })
+        jobsStartedHere.current.add(jobId)
         toast.success('Narration queued', 'ElevenLabs is recording the selected voice.')
       }
     } catch (error) {
@@ -207,26 +213,37 @@ export default function HomePage() {
   useEffect(() => {
     if (briefJob?.status !== 'succeeded' || !briefJob.result?.brief || appliedBriefJob.current === briefJob.id) return
     appliedBriefJob.current = briefJob.id
+    const shouldNotify = jobsStartedHere.current.delete(briefJob.id)
     const next = { ...draft, ...briefJob.result.brief, status: 'ready' as const }
     setDraft(next)
-    if (recordId) void putConfirmed(recordId, next).then(() => toast.success('AI brief ready', 'Review and edit every field.')).catch(error => toast.error('Brief ready but not saved', error instanceof Error ? error.message : 'Save it manually.'))
+    if (recordId) void putConfirmed(recordId, next)
+      .then(() => { if (shouldNotify) toast.success('AI brief ready', 'Review and edit every field.') })
+      .catch(error => { if (shouldNotify) toast.error('Brief ready but not saved', error instanceof Error ? error.message : 'Save it manually.') })
   }, [briefJob, draft, putConfirmed, recordId, toast])
 
   useEffect(() => {
     if (stillJob?.status !== 'succeeded' || stillJob.result?.asset?.kind !== 'image' || appliedStillJob.current === stillJob.id) return
     appliedStillJob.current = stillJob.id
+    const shouldNotify = jobsStartedHere.current.delete(stillJob.id)
+    if (imageAsset?.key === stillJob.result.asset.key) return
     const next = { ...draft, imageUrl: appFileUrl(stillJob.result.asset.key), assetManifest: upsertAssetManifest(draft.assetManifest, stillJob.result.asset), status: 'ready' as const }
     setDraft(next)
-    if (recordId) void putConfirmed(recordId, next).then(() => toast.success('Visual ready', 'The FAL image is stored in durable app storage.')).catch(error => toast.error('Image ready but not saved', error instanceof Error ? error.message : 'Save it manually.'))
-  }, [stillJob, draft, putConfirmed, recordId, toast])
+    if (recordId) void putConfirmed(recordId, next)
+      .then(() => { if (shouldNotify) toast.success('Visual ready', 'The FAL image is stored in durable app storage.') })
+      .catch(error => { if (shouldNotify) toast.error('Image ready but not saved', error instanceof Error ? error.message : 'Save it manually.') })
+  }, [stillJob, draft, imageAsset?.key, putConfirmed, recordId, toast])
 
   useEffect(() => {
     if (voiceJob?.status !== 'succeeded' || voiceJob.result?.asset?.kind !== 'audio' || appliedVoiceJob.current === voiceJob.id) return
     appliedVoiceJob.current = voiceJob.id
+    const shouldNotify = jobsStartedHere.current.delete(voiceJob.id)
+    if (audioAsset?.key === voiceJob.result.asset.key) return
     const next = { ...draft, audioUrl: appFileUrl(voiceJob.result.asset.key), assetManifest: upsertAssetManifest(draft.assetManifest, voiceJob.result.asset), status: 'ready' as const }
     setDraft(next)
-    if (recordId) void putConfirmed(recordId, next).then(() => toast.success('Narration ready', 'The ElevenLabs recording is stored in durable app storage.')).catch(error => toast.error('Narration ready but not saved', error instanceof Error ? error.message : 'Save it manually.'))
-  }, [voiceJob, draft, putConfirmed, recordId, toast])
+    if (recordId) void putConfirmed(recordId, next)
+      .then(() => { if (shouldNotify) toast.success('Narration ready', 'The ElevenLabs recording is stored in durable app storage.') })
+      .catch(error => { if (shouldNotify) toast.error('Narration ready but not saved', error instanceof Error ? error.message : 'Save it manually.') })
+  }, [audioAsset?.key, voiceJob, draft, putConfirmed, recordId, toast])
 
   const stepState = [
     { job: briefJob, done: Boolean(recordId && draft.stillPrompt.trim()) },
