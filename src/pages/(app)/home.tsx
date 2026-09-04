@@ -963,22 +963,19 @@ export default function HomePage() {
     )
   }
 
+  const showingFinalRender = activeStep === 3 && Boolean(renderUrl)
+  const displayedVideoUrl = showingFinalRender ? renderUrl : previewVideoUrl
   const mediaPreview = (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.22)]">
       <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
-        {renderUrl ? (
+        {displayedVideoUrl ? (
           <video
-            src={renderUrl}
-            aria-label="Final MotionBrief video"
-            className="absolute inset-0 h-full w-full object-cover"
-            controls
-            playsInline
-            loop
-          />
-        ) : previewVideoUrl ? (
-          <video
-            src={previewVideoUrl}
-            aria-label="Generated MotionBrief animation"
+            src={displayedVideoUrl}
+            aria-label={
+              showingFinalRender
+                ? 'Final MotionBrief video'
+                : 'Generated MotionBrief animation'
+            }
             className="absolute inset-0 h-full w-full object-cover"
             controls
             playsInline
@@ -997,7 +994,7 @@ export default function HomePage() {
           </>
         )}
       </div>
-      {audioUrl && !renderUrl && (
+      {audioUrl && !showingFinalRender && (
         <div className="border-t border-border p-3">
           <audio
             aria-label="Generated narration preview"
@@ -1010,9 +1007,9 @@ export default function HomePage() {
       <div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground">
         <span>9:16 · 5 seconds</span>
         <span>
-          {renderUrl
+          {showingFinalRender
             ? 'Final MP4'
-            : videoUrl
+            : previewVideoUrl
               ? 'Motion ready'
               : audioUrl
                 ? 'Voiced concept'
