@@ -31,7 +31,7 @@ export default function LandingPage() {
           <div>
             <p className="mb-5 text-xs font-semibold uppercase tracking-[.24em] text-primary">Prompt to campaign concept</p>
             <h1 className="max-w-3xl text-5xl font-semibold leading-[.94] tracking-[-.06em] sm:text-6xl lg:text-7xl">Turn one rough idea into something you can see and hear.</h1>
-            <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">MotionBrief shapes a creator prompt into an editable brief, a campaign visual, and a short narrated concept—all in one focused workspace.</p>
+            <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">MotionBrief shapes a creator prompt into an editable brief, campaign visual, five-second animation, narration, and final vertical MP4—all in one focused workspace.</p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link className={buttonVariants({ size: 'lg' })} to="/home?new=1">Create a concept <ArrowRight aria-hidden /></Link>
               <Link className={buttonVariants({ variant: 'outline', size: 'lg' })} to="/projects">View projects</Link>
@@ -81,8 +81,8 @@ export default function LandingPage() {
 
       <footer className="relative border-t border-border/70">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between md:px-8">
-          <p>Built with three DeepSpace integrations that matter to the workflow.</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-2 font-medium text-foreground"><span>OpenAI · Brief</span><span>FAL · Visual</span><span>ElevenLabs · Voice</span></div>
+          <p>Built with four DeepSpace integrations that matter to the workflow.</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 font-medium text-foreground"><span>OpenAI · Brief</span><span>FAL · Visual + motion</span><span>ElevenLabs · Voice</span><span>Shotstack · Final MP4</span></div>
         </div>
       </footer>
     </div>

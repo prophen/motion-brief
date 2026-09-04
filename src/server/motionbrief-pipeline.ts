@@ -433,3 +433,16 @@ export async function storeNarrationDataUrl(
     sourceUrl: 'elevenlabs:data-url',
   })
 }
+
+export async function restorageNarrationAsset(
+  env: Env,
+  input: { projectId: string; audioKey: string; signal?: AbortSignal },
+): Promise<StoredAsset> {
+  if (!input.audioKey.trim()) throw new Error('stored_audio_required')
+  return storeRemoteAsset(env, {
+    projectId: input.projectId,
+    kind: 'audio',
+    sourceUrl: publicAppAssetUrl(env, input.audioKey),
+    signal: input.signal,
+  })
+}

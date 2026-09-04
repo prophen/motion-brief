@@ -41,7 +41,7 @@
 
 import type { Job, JobContext } from 'deepspace/worker'
 import type { Env } from '../worker.js'
-import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, preflightShotstackAssets, runProviderDiagnostic, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
+import { generateCreativeBrief, generateNarrationDataUrl, MOTIONBRIEF_PIPELINE_VERSION, pollFalMotion, pollFalStill, pollShotstackRender, preflightShotstackAssets, restorageNarrationAsset, runProviderDiagnostic, storeNarrationDataUrl, storeRemoteAsset, submitFalMotion, submitFalStill, submitShotstackRender } from './server/motionbrief-pipeline.js'
 import { FINAL_RENDER_ENABLED, MOTION_GENERATION_ENABLED } from './lib/pipeline-config.js'
 import { buildShotstackTextOnlySmokeEdit } from './lib/shotstack.js'
 
@@ -264,6 +264,17 @@ export async function runJob(
     ctx.progress(0.2, 'Retrying durable narration storage')
     const asset = await storeNarrationDataUrl(env, payload)
     ctx.progress(1, 'Narration stored')
+    return { projectId: payload.projectId, asset }
+  }
+
+  if (job.type === 'motionbrief-restorage-narration') {
+    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
+      throw new Error('storage_job_requires_app_owner')
+    }
+    const payload = job.payload as { projectId: string; audioKey: string }
+    ctx.progress(0.2, 'Updating narration filename')
+    const asset = await restorageNarrationAsset(env, { ...payload, signal: ctx.signal })
+    ctx.progress(1, 'Narration stored as MP3')
     return { projectId: payload.projectId, asset }
   }
 
