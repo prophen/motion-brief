@@ -1,122 +1,345 @@
-/* home pattern: product-preview-first — editable brief and production rail above the fold */
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { useAuthProfileReady, useJobs, useMutations, useQuery, useR2Files } from 'deepspace'
-import { Clapperboard, FileText, Image, Mic2, Play, Save, Sparkles, Upload } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useAuthProfileReady, useJobs, useMutations, useQuery } from 'deepspace'
+import { Check, Clipboard, Download, FileText, Image, Mic2, PackageCheck, Save, Sparkles } from 'lucide-react'
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, useToast } from '../../components/ui'
 import { SCOPE_ID } from '../../constants'
+import { latestStoredAsset, normalizeAssetManifest, upsertAssetManifest, type StoredAsset } from '../../lib/assets'
+import { buildCreativePackageMarkdown, safePackageFilename } from '../../lib/creative-package'
 import { countWords, narrationFitsFiveSeconds, NARRATION_HARD_MAX_WORDS } from '../../lib/narration'
 import { DEFAULT_MOTIONBRIEF_VOICE_ID, MOTIONBRIEF_VOICES } from '../../lib/voices'
-import { latestStoredAsset, normalizeAssetManifest, upsertAssetManifest, type StoredAsset } from '../../lib/assets'
-import { FINAL_RENDER_BLOCK_REASON, FINAL_RENDER_ENABLED, MOTION_GENERATION_BLOCK_REASON, MOTION_GENERATION_ENABLED } from '../../lib/pipeline-config'
-import { readMediaDuration, readVideoMetadata, validateUploadedMotion } from '../../lib/video-upload'
-import type { RenderPreflight } from '../../lib/render-preflight'
 
-type PipelineResult = { projectId:string; pipelineVersion?:number; assetManifest?:unknown[]; brief?:Pick<Project,'title'|'audience'|'objective'|'visualDirection'|'motionDirection'|'narration'|'headline'|'stillPrompt'|'motionPrompt'>; asset?:StoredAsset; temporaryImageUrl?:string; temporaryVideoUrl?:string; temporaryAudioUrl?:string; temporaryRenderUrl?:string; renderCostUsd?:number; storageError?:string; preflight?:RenderPreflight }
-type Project = { title:string; prompt:string; audience:string; objective:string; visualDirection:string; motionDirection:string; narration:string; voiceId:string; headline:string; stillPrompt:string; motionPrompt:string; pipelineVersion:number; assetManifest:string; imageUrl:string; videoUrl:string; audioUrl:string; renderUrl:string; status:'draft'|'ready'|'rendering'|'complete' }
-const seed: Project = { title:'Untitled motion brief', prompt:'', audience:'Curious creators on short-form video', objective:'Make one clear idea feel immediate and worth sharing.', visualDirection:'Editorial still, tactile light, one decisive focal point, portrait-safe composition.', motionDirection:'Slow push-in with restrained environmental movement; no cuts.', narration:'One idea. One frame. Ready to move.', voiceId:DEFAULT_MOTIONBRIEF_VOICE_ID, headline:'MAKE THE IDEA MOVE', stillPrompt:'', motionPrompt:'', pipelineVersion:1, assetManifest:'[]', imageUrl:'', videoUrl:'', audioUrl:'', renderUrl:'', status:'draft' }
-const steps = [['Brief',FileText],['Still',Image],['Motion',Play],['Voice',Mic2],['Render',Clapperboard]] as const
+type Project = {
+  title: string
+  prompt: string
+  audience: string
+  objective: string
+  visualDirection: string
+  motionDirection: string
+  narration: string
+  voiceId: string
+  headline: string
+  stillPrompt: string
+  motionPrompt: string
+  pipelineVersion: number
+  assetManifest: string
+  imageUrl: string
+  videoUrl: string
+  audioUrl: string
+  renderUrl: string
+  status: 'draft' | 'ready' | 'rendering' | 'complete'
+}
 
-function appFileUrl(key:string){return `/api/files/${key.split('/').map(encodeURIComponent).join('/')}?scope=app`}
-function storedImageUrl(project:Project){
-  const image=latestStoredAsset(project.assetManifest,'image')
-  if(image) return appFileUrl(image.key)
-  return project.imageUrl
+type PipelineResult = {
+  projectId: string
+  pipelineVersion?: number
+  assetManifest?: unknown[]
+  brief?: Pick<Project, 'title' | 'audience' | 'objective' | 'visualDirection' | 'motionDirection' | 'narration' | 'headline' | 'stillPrompt' | 'motionPrompt'>
+  asset?: StoredAsset
+  temporaryImageUrl?: string
+  temporaryAudioUrl?: string
+  storageError?: string
 }
-function storedVideoUrl(project:Project){
-  const video=latestStoredAsset(project.assetManifest,'video')
-  if(video) return appFileUrl(video.key)
-  return project.videoUrl
+
+const seed: Project = {
+  title: 'Untitled creative brief',
+  prompt: '',
+  audience: 'Curious creators building for short-form platforms',
+  objective: 'Turn one clear idea into a campaign-ready concept.',
+  visualDirection: 'Editorial still, tactile light, one decisive focal point, portrait-safe composition.',
+  motionDirection: 'Use the still and narration as the foundation for a future motion treatment.',
+  narration: 'One clear idea becomes a campaign people can feel.',
+  voiceId: DEFAULT_MOTIONBRIEF_VOICE_ID,
+  headline: 'MAKE THE IDEA VISIBLE',
+  stillPrompt: '',
+  motionPrompt: '',
+  pipelineVersion: 1,
+  assetManifest: '[]',
+  imageUrl: '',
+  videoUrl: '',
+  audioUrl: '',
+  renderUrl: '',
+  status: 'draft',
 }
-function storedAudioUrl(project:Project){
-  const audio=latestStoredAsset(project.assetManifest,'audio')
-  if(audio) return appFileUrl(audio.key)
-  return project.audioUrl
+
+const steps = [
+  ['Brief', FileText],
+  ['Visual', Image],
+  ['Voice', Mic2],
+  ['Package', PackageCheck],
+] as const
+
+function appFileUrl(key: string) {
+  return `/api/files/${key.split('/').map(encodeURIComponent).join('/')}?scope=app`
 }
-function storedRenderUrl(project:Project){
-  const render=latestStoredAsset(project.assetManifest,'render')
-  if(render) return appFileUrl(render.key)
-  return project.renderUrl
+
+function confirmPaidCall(details: string) {
+  return window.confirm(`Confirm one paid provider call\n\n${details}\n\nThis submits exactly one paid request. Continue?`)
 }
-function storedAssetKey(project:Project,kind:StoredAsset['kind']){
-  return latestStoredAsset(project.assetManifest,kind)?.key??''
+
+function narrationReservationEstimate(text: string) {
+  return text.trim().length * 0.000065 * 1.3
 }
-function storedAsset(project:Project,kind:StoredAsset['kind']){
-  return latestStoredAsset(project.assetManifest,kind)
+
+function latestJob(jobs: ReturnType<typeof useJobs<unknown, PipelineResult>>['jobs'], types: string[], recordId: string | null) {
+  return jobs
+    .filter(job => types.includes(job.type) && (!recordId || (job.payload as { projectId?: string } | undefined)?.projectId === recordId))
+    .sort((a, b) => Date.parse(b.enqueuedAt) - Date.parse(a.enqueuedAt))[0]
 }
-function narrationReservationEstimate(text:string){return text.trim().length*0.000065*1.3}
-function confirmPaidCall(details:string){return window.confirm(`Confirm one paid provider call\n\n${details}\n\nThis submits exactly one paid request. Continue?`)}
 
 export default function HomePage() {
   const { isSignedIn } = useAuthProfileReady({ requireUser: true })
-  const { records } = useQuery<Project>('motion-projects', { orderBy:'updatedAt', orderDir:'desc', limit:1 })
+  const { records } = useQuery<Project>('motion-projects', { orderBy: 'updatedAt', orderDir: 'desc', limit: 1 })
   const { createConfirmed, putConfirmed, ready } = useMutations<Project>('motion-projects')
-  const { upload, isUploading } = useR2Files({ scope:'app' })
   const { enqueue, jobs } = useJobs<unknown, PipelineResult>(SCOPE_ID)
   const toast = useToast()
-  const [draft,setDraft] = useState(seed), [recordId,setRecordId] = useState<string|null>(null)
-  const [saving,setSaving] = useState(false), [queuing,setQueuing] = useState(false)
-  const [renderAttemptStartedAt,setRenderAttemptStartedAt] = useState<number|null>(null)
-  const appliedJob = useRef<string|null>(null)
-  const appliedStillJob = useRef<string|null>(null)
-  const appliedMotionJob = useRef<string|null>(null)
-  const appliedVoiceJob = useRef<string|null>(null)
-  const appliedRenderJob = useRef<string|null>(null)
-  const appliedPreflightJob = useRef<string|null>(null)
-  const preflightRequestedAt = useRef<number|null>(null)
-  const loadedRecord = useRef<string|null>(null)
-  const uploadInput = useRef<HTMLInputElement|null>(null)
-  const stored = records[0], project = draft, previewImageUrl=storedImageUrl(draft), previewVideoUrl=storedVideoUrl(draft), previewAudioUrl=storedAudioUrl(draft), previewRenderUrl=storedRenderUrl(draft)
-  const job = useMemo(() => jobs.filter(j => j.type === 'motionbrief-generate-brief' && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId === recordId)).sort((a,b)=>Date.parse(b.enqueuedAt)-Date.parse(a.enqueuedAt))[0], [jobs,recordId])
-  const stillJob = useMemo(() => jobs.filter(j => ['motionbrief-generate-still','motionbrief-store-still'].includes(j.type) && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId === recordId)).sort((a,b)=>Date.parse(b.enqueuedAt)-Date.parse(a.enqueuedAt))[0], [jobs,recordId])
-  const motionJob = useMemo(() => jobs.filter(j => ['motionbrief-generate-motion','motionbrief-store-motion'].includes(j.type) && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId === recordId)).sort((a,b)=>Date.parse(b.enqueuedAt)-Date.parse(a.enqueuedAt))[0], [jobs,recordId])
-  const voiceJob = useMemo(() => jobs.filter(j => ['motionbrief-generate-narration','motionbrief-store-narration'].includes(j.type) && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId === recordId)).sort((a,b)=>Date.parse(b.enqueuedAt)-Date.parse(a.enqueuedAt))[0], [jobs,recordId])
-  const renderJob = useMemo(() => jobs.filter(j => ['motionbrief-render-final','motionbrief-store-render'].includes(j.type) && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId === recordId)).sort((a,b)=>Date.parse(b.enqueuedAt)-Date.parse(a.enqueuedAt))[0], [jobs,recordId])
-  const preflightJob = useMemo(() => jobs.filter(j => j.type==='motionbrief-preflight-render' && (!recordId || (j.payload as {projectId?:string}|undefined)?.projectId===recordId)).sort((a,b)=>Date.parse(b.enqueuedAt)-Date.parse(a.enqueuedAt))[0], [jobs,recordId])
-  const currentRenderActivity = useMemo(() => renderAttemptStartedAt===null ? undefined : [renderJob,preflightJob]
-    .filter(job => job && Date.parse(job.enqueuedAt)>=renderAttemptStartedAt)
-    .sort((a,b)=>Date.parse(b!.enqueuedAt)-Date.parse(a!.enqueuedAt))[0], [renderAttemptStartedAt,renderJob,preflightJob])
-  const set = <K extends keyof Project>(key:K,value:Project[K]) => setDraft(current => ({...current,[key]:value}))
+  const [draft, setDraft] = useState(seed)
+  const [recordId, setRecordId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [queuing, setQueuing] = useState(false)
+  const loadedRecord = useRef<string | null>(null)
+  const appliedBriefJob = useRef<string | null>(null)
+  const appliedStillJob = useRef<string | null>(null)
+  const appliedVoiceJob = useRef<string | null>(null)
 
-  useEffect(()=>{
-    if(!stored || loadedRecord.current===stored.recordId) return
-    loadedRecord.current=stored.recordId
+  const stored = records[0]
+  const imageAsset = latestStoredAsset(draft.assetManifest, 'image')
+  const audioAsset = latestStoredAsset(draft.assetManifest, 'audio')
+  const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : draft.imageUrl
+  const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : draft.audioUrl
+  const packageReady = Boolean(recordId && imageAsset && audioAsset && draft.headline.trim())
+  const briefJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-brief'], recordId), [jobs, recordId])
+  const stillJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-still', 'motionbrief-store-still'], recordId), [jobs, recordId])
+  const voiceJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-narration', 'motionbrief-store-narration'], recordId), [jobs, recordId])
+
+  const set = <K extends keyof Project>(key: K, value: Project[K]) => {
+    setDraft(current => ({ ...current, [key]: value, status: current.status === 'complete' ? 'ready' : current.status }))
+  }
+
+  useEffect(() => {
+    if (!stored || loadedRecord.current === stored.recordId) return
+    loadedRecord.current = stored.recordId
     setRecordId(stored.recordId)
-    setDraft({...seed,...stored.data,assetManifest:normalizeAssetManifest(stored.data.assetManifest??'[]')})
-  },[stored])
+    setDraft({ ...seed, ...stored.data, assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]') })
+  }, [stored])
 
   async function save() {
-    if (!isSignedIn) return toast.info('Sign in to save','The studio preview is open; saving requires an account.')
-    const values = {...project,assetManifest:normalizeAssetManifest(project.assetManifest)}
-    if (!values.prompt.trim()) return toast.error('Prompt required','Add the creator prompt before saving the brief.')
-    if (!narrationFitsFiveSeconds(values.narration)) return toast.error('Narration timing','Use 8–13 words for a five-second read, or leave narration empty.')
+    if (!isSignedIn) return toast.info('Sign in to save', 'Saving and generation require an account.')
+    const values = { ...draft, assetManifest: normalizeAssetManifest(draft.assetManifest) }
+    if (!values.prompt.trim()) return toast.error('Prompt required', 'Add the creator prompt before saving the brief.')
+    if (values.narration.trim() && !narrationFitsFiveSeconds(values.narration)) {
+      return toast.error('Narration timing', 'Use 8–13 words for a concise concept read.')
+    }
     setSaving(true)
-    try { if(recordId) await putConfirmed(recordId,{...values,status:'ready'}); else setRecordId(await createConfirmed({...values,status:'ready'})); setDraft({...values,status:'ready'}); toast.success('Brief saved','Your editable production brief is ready.') }
-    catch(e){ toast.error('Could not save',e instanceof Error?e.message:'Please try again.') } finally { setSaving(false) }
+    try {
+      if (recordId) await putConfirmed(recordId, { ...values, status: 'ready' })
+      else setRecordId(await createConfirmed({ ...values, status: 'ready' }))
+      setDraft({ ...values, status: 'ready' })
+      toast.success('Brief saved', 'Your editable concept is synced in DeepSpace.')
+    } catch (error) {
+      toast.error('Could not save', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
-  async function preview(){ if(!isSignedIn||!recordId) return toast.info('Save first','Sign in and save the brief before previewing.'); setQueuing(true); try{ await enqueue('motionbrief-preview',{projectId:recordId,headline:draft.headline},{maxAttempts:1}); toast.success('Preview queued','Zero-cost orchestration only; no paid integrations called.') }catch(e){toast.error('Could not queue',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
-  async function generateBrief(){ if(!isSignedIn||!recordId) return toast.info('Save first','Sign in and save your creator prompt first.'); if(!confirmPaidCall('Provider: OpenAI\nModel: gpt-5.6-terra\nEstimated cost: usage-based')) return; setQueuing(true); try{ await enqueue('motionbrief-generate-brief',{projectId:recordId,prompt:project.prompt},{maxAttempts:1}); toast.success('AI brief queued','One confirmed OpenAI request was submitted.') }catch(e){toast.error('Could not queue',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
-  async function generateStill(){ if(!isSignedIn||!recordId) return toast.info('Save first','Save the AI brief before generating a still.'); const recover=stillJob?.result?.temporaryImageUrl; if(!recover&&!project.stillPrompt.trim()) return toast.error('Still prompt missing','Generate or enter a still prompt first.'); if(!recover&&!confirmPaidCall('Provider: FAL\nModel: Seedream v5 Lite\nEstimated cost: $0.035\nProvider ceiling: $0.04')) return; setQueuing(true); try{ if(recover){await enqueue('motionbrief-store-still',{projectId:recordId,sourceUrl:recover},{maxAttempts:1}); toast.success('Storage retry queued','Reusing the existing FAL image; no generation charge.')}else{await enqueue('motionbrief-generate-still',{projectId:recordId,stillPrompt:project.stillPrompt},{maxAttempts:1}); toast.success('Still queued','One confirmed FAL image request was submitted.')} }catch(e){toast.error('Could not queue',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
-  async function generateMotion(){ if(!isSignedIn||!recordId) return toast.info('Save first','Save the brief before generating motion.'); const recover=motionJob?.result?.temporaryVideoUrl; if(!recover&&!MOTION_GENERATION_ENABLED) return toast.info('Motion temporarily paused',MOTION_GENERATION_BLOCK_REASON); const image=storedAsset(project,'image'); if(!recover&&!image?.sourceUrl) return toast.error('Stored still required','Generate and store a still before animation.'); if(!recover&&!project.motionPrompt.trim()) return toast.error('Motion prompt missing','Generate or enter a motion prompt first.'); if(!recover&&!confirmPaidCall('Provider: FAL\nModel: Wan 2.6 Image-to-Video Flash\nDuration: 5 seconds\nEstimated reservation: $0.325\nProvider ceiling: $0.25')) return; setQueuing(true); try{ if(recover){await enqueue('motionbrief-store-motion',{projectId:recordId,sourceUrl:recover},{maxAttempts:1}); toast.success('Video storage retry queued','Reusing the existing FAL video; no generation charge.')}else{await enqueue('motionbrief-generate-motion',{projectId:recordId,motionPrompt:project.motionPrompt,imageUrl:image?.sourceUrl},{maxAttempts:1}); toast.success('Motion queued','One confirmed FAL video request was submitted.')} }catch(e){toast.error('Could not queue',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
-  async function generateNarration(){ if(!isSignedIn||!recordId) return toast.info('Save first','Save the brief before generating narration.'); const recover=voiceJob?.result?.temporaryAudioUrl; if(!recover&&!narrationFitsFiveSeconds(project.narration)) return toast.error('Narration timing','Use 8–13 words for a five-second read.'); if(!recover&&!project.narration.trim()) return toast.error('Narration required','Enter narration, or leave this phase silent.'); if(!recover&&!confirmPaidCall(`Provider: ElevenLabs\nModel: eleven_flash_v2_5\nVoice: ${MOTIONBRIEF_VOICES.find(voice=>voice.id===project.voiceId)?.name??project.voiceId}\nEstimated reservation: $${narrationReservationEstimate(project.narration).toFixed(4)}`)) return; setQueuing(true); try{ if(recover){await enqueue('motionbrief-store-narration',{projectId:recordId,dataUrl:recover},{maxAttempts:1}); toast.success('Audio storage retry queued','Reusing the existing ElevenLabs audio; no generation charge.')}else{await enqueue('motionbrief-generate-narration',{projectId:recordId,narration:project.narration,voiceId:project.voiceId},{maxAttempts:1}); toast.success('Narration queued','One confirmed ElevenLabs request was submitted.')} }catch(e){toast.error('Could not queue',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
-  async function uploadMotion(event:ChangeEvent<HTMLInputElement>){ const file=event.target.files?.[0]; event.target.value=''; if(!file||!recordId) return; try{ const metadata=await readVideoMetadata(file); const validation=validateUploadedMotion({type:file.type,size:file.size,...metadata}); if(validation) return toast.error('Video not accepted',validation); const result=await upload(file,`motionbrief-${recordId}-motion.mp4`); if(!result.success||!result.key) throw new Error(result.error??'video_upload_failed'); const asset:StoredAsset={kind:'video',key:result.key,url:appFileUrl(result.key),mimeType:'video/mp4',sourceUrl:'user-upload',storedAt:new Date().toISOString()}; const next={...project,videoUrl:asset.url,assetManifest:upsertAssetManifest(project.assetManifest,asset)}; await putConfirmed(recordId,next); setDraft(next); toast.success('Motion clip uploaded','The five-second MP4 is stored and ready for final rendering.') }catch(error){toast.error('Upload failed',error instanceof Error?error.message:'Please try another MP4.')} }
-  async function renderFinal(){ if(!isSignedIn||!recordId) return toast.info('Save first','Save the brief before rendering.'); const recover=renderJob?.result?.temporaryRenderUrl; const video=storedAsset(project,'video'), audio=storedAsset(project,'audio'); if(!recover&&!video) return toast.error('Motion required','A stored motion clip is required before final rendering.'); if(!recover&&project.narration.trim()&&!audio) return toast.error('Narration audio required','Generate narration first, or clear the narration field for a silent render.'); if(!recover&&!project.headline.trim()) return toast.error('Headline required','Enter the one headline before rendering.'); const attemptStartedAt=Date.now()-5000; setRenderAttemptStartedAt(attemptStartedAt); setQueuing(true); try{ if(recover){await enqueue('motionbrief-store-render',{projectId:recordId,sourceUrl:recover},{maxAttempts:1}); toast.success('Final storage retry queued','Reusing the existing Shotstack render; no render charge.')}else{const measuredVideoLength=await readMediaDuration(appFileUrl(video!.key),'video'); if(measuredVideoLength<4.95) throw new Error('motion_video_must_be_at_least_4.95_seconds'); const videoLength=Math.min(5,Math.max(0.1,measuredVideoLength-0.02)); const audioLength=audio?await readMediaDuration(appFileUrl(audio.key),'audio'):undefined; preflightRequestedAt.current=attemptStartedAt; await enqueue('motionbrief-preflight-render',{projectId:recordId,videoKey:video!.key,videoLength,audioKey:audio?.key,audioLength},{maxAttempts:1}); toast.info('Checking render assets','No paid provider call has been made.')} }catch(e){preflightRequestedAt.current=null;setRenderAttemptStartedAt(null);toast.error('Could not prepare render',e instanceof Error?e.message:'Please try again.')}finally{setQueuing(false)} }
 
-  useEffect(()=>{ if(job?.status!=='succeeded'||!job.result?.brief||appliedJob.current===job.id) return; appliedJob.current=job.id; const next={...draft,...job.result.brief,pipelineVersion:job.result.pipelineVersion??1,assetManifest:JSON.stringify(job.result.assetManifest??[]),status:'ready' as const}; setDraft(next); if(recordId) void putConfirmed(recordId,next).then(()=>toast.success('AI brief ready','Review and edit every field before generating assets.')).catch(e=>toast.error('Brief generated but not saved',e instanceof Error?e.message:'Save it manually.')) },[job,draft,putConfirmed,recordId,toast])
-  useEffect(()=>{ if(stillJob?.status!=='succeeded'||!stillJob.result?.asset||appliedStillJob.current===stillJob.id) return; appliedStillJob.current=stillJob.id; const next={...draft,imageUrl:appFileUrl(stillJob.result.asset.key),assetManifest:upsertAssetManifest(draft.assetManifest,stillJob.result.asset)}; setDraft(next); if(recordId) void putConfirmed(recordId,next).then(()=>toast.success('Still image ready','The FAL result is copied into durable app storage.')).catch(e=>toast.error('Image ready but not saved',e instanceof Error?e.message:'Save it manually.')) },[stillJob,draft,putConfirmed,recordId,toast])
-  useEffect(()=>{ if(stillJob?.status!=='succeeded'||!stillJob.result?.temporaryImageUrl||appliedStillJob.current===stillJob.id) return; appliedStillJob.current=stillJob.id; setDraft(current=>({...current,imageUrl:stillJob.result?.temporaryImageUrl??''})); toast.error('Image generated; storage retry available',stillJob.result.storageError??'Storage failed') },[stillJob,toast])
-  useEffect(()=>{ if(motionJob?.status!=='succeeded'||motionJob.result?.asset?.kind!=='video'||appliedMotionJob.current===motionJob.id) return; appliedMotionJob.current=motionJob.id; const next={...draft,videoUrl:appFileUrl(motionJob.result.asset.key),assetManifest:upsertAssetManifest(draft.assetManifest,motionJob.result.asset)}; setDraft(next); if(recordId) void putConfirmed(recordId,next).then(()=>toast.success('Motion ready','The five-second video is in durable app storage.')).catch(e=>toast.error('Video ready but not saved',e instanceof Error?e.message:'Save it manually.')) },[motionJob,draft,putConfirmed,recordId,toast])
-  useEffect(()=>{ if(motionJob?.status!=='succeeded'||!motionJob.result?.temporaryVideoUrl||appliedMotionJob.current===motionJob.id) return; appliedMotionJob.current=motionJob.id; setDraft(current=>({...current,videoUrl:motionJob.result?.temporaryVideoUrl??''})); toast.error('Video generated; storage retry available',motionJob.result.storageError??'Storage failed') },[motionJob,toast])
-  useEffect(()=>{ if(voiceJob?.status!=='succeeded'||voiceJob.result?.asset?.kind!=='audio'||appliedVoiceJob.current===voiceJob.id) return; appliedVoiceJob.current=voiceJob.id; const next={...draft,audioUrl:appFileUrl(voiceJob.result.asset.key),assetManifest:upsertAssetManifest(draft.assetManifest,voiceJob.result.asset)}; setDraft(next); if(recordId) void putConfirmed(recordId,next).then(()=>toast.success('Narration ready','The ElevenLabs MP3 is in durable app storage.')).catch(e=>toast.error('Narration ready but not saved',e instanceof Error?e.message:'Save it manually.')) },[voiceJob,draft,putConfirmed,recordId,toast])
-  useEffect(()=>{ if(voiceJob?.status!=='succeeded'||!voiceJob.result?.temporaryAudioUrl||appliedVoiceJob.current===voiceJob.id) return; appliedVoiceJob.current=voiceJob.id; setDraft(current=>({...current,audioUrl:voiceJob.result?.temporaryAudioUrl??''})); toast.error('Narration generated; storage retry available',voiceJob.result.storageError??'Storage failed') },[voiceJob,toast])
-  useEffect(()=>{ const requestedAt=preflightRequestedAt.current; if(requestedAt===null||!preflightJob||Date.parse(preflightJob.enqueuedAt)<requestedAt||preflightJob.status!=='succeeded'||!preflightJob.result?.preflight||appliedPreflightJob.current===preflightJob.id) return; preflightRequestedAt.current=null; appliedPreflightJob.current=preflightJob.id; const failed=preflightJob.result.preflight.assets.filter(asset=>!asset.ok); if(failed.length){toast.error('Render preflight failed',failed.map(asset=>asset.error).join(' '));return} const payload=preflightJob.payload as {videoKey:string;videoLength:number;audioKey?:string;audioLength?:number}; if(!confirmPaidCall(`Provider: Shotstack\nTimeline: ${payload.videoLength.toFixed(2)}-second 9:16 MP4\nAssets: public video`+(payload.audioKey?` + ${Math.min(payload.videoLength,payload.audioLength??payload.videoLength).toFixed(2)}s narration`:'')+'\nEstimated cost: usage-based per rendered second')){toast.info('Render cancelled','Preflight passed; no paid Shotstack call was made.');return} void enqueue('motionbrief-render-final',{projectId:recordId,headline:project.headline,videoKey:payload.videoKey,videoLength:payload.videoLength,audioKey:payload.audioKey,audioLength:payload.audioLength},{maxAttempts:1}).then(()=>toast.success('Final render queued','One confirmed Shotstack request was submitted.')).catch(error=>toast.error('Could not queue',error instanceof Error?error.message:'Please try again.')) },[preflightJob,enqueue,project.headline,recordId,toast])
-  useEffect(()=>{ if(renderJob?.status!=='succeeded'||renderJob.result?.asset?.kind!=='render'||appliedRenderJob.current===renderJob.id) return; appliedRenderJob.current=renderJob.id; const next={...draft,renderUrl:appFileUrl(renderJob.result.asset.key),assetManifest:upsertAssetManifest(draft.assetManifest,renderJob.result.asset),status:'complete' as const}; setDraft(next); if(recordId) void putConfirmed(recordId,next).then(()=>toast.success('Final MP4 ready',`Stored permanently${typeof renderJob.result?.renderCostUsd==='number'?` · render cost $${renderJob.result.renderCostUsd.toFixed(4)}`:''}.`)).catch(e=>toast.error('Final video ready but not saved',e instanceof Error?e.message:'Save it manually.')) },[renderJob,draft,putConfirmed,recordId,toast])
-  useEffect(()=>{ if(renderJob?.status!=='succeeded'||!renderJob.result?.temporaryRenderUrl||appliedRenderJob.current===renderJob.id) return; appliedRenderJob.current=renderJob.id; setDraft(current=>({...current,renderUrl:renderJob.result?.temporaryRenderUrl??''})); toast.error('Render complete; storage retry available',renderJob.result.storageError??'Storage failed') },[renderJob,toast])
+  async function generateBrief() {
+    if (!isSignedIn || !recordId) return toast.info('Save first', 'Save your creator prompt before generating the brief.')
+    if (!confirmPaidCall('Provider: OpenAI\nModel: gpt-5.6-terra\nOutput: editable creative direction and copy')) return
+    setQueuing(true)
+    try {
+      await enqueue('motionbrief-generate-brief', { projectId: recordId, prompt: draft.prompt }, { maxAttempts: 1 })
+      toast.success('Brief queued', 'OpenAI is shaping the editable concept.')
+    } catch (error) {
+      toast.error('Could not queue', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setQueuing(false)
+    }
+  }
 
-  return <div className="min-h-full bg-background text-foreground"><div className="mx-auto grid max-w-[1500px] lg:grid-cols-[minmax(0,1fr)_390px]">
-    <section className="min-w-0 border-border lg:border-r"><header className="border-b border-border px-5 py-7 md:px-9"><div className="flex flex-wrap items-end justify-between gap-5"><div><p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Prompt to motion</p><h1 className="text-3xl font-semibold tracking-[-.04em] md:text-5xl">Build the brief. Ship the frame.</h1><p className="mt-3 text-muted-foreground">One surface for the idea, image, motion, voice, and vertical cut.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save/>Save brief</Button><Button variant="outline" onClick={preview} loading={queuing}><Sparkles/>Preview pipeline</Button><Button onClick={generateStill} loading={stillJob?.status==='queued'||stillJob?.status==='running'} disabled={!recordId||(!project.stillPrompt.trim()&&!stillJob?.result?.temporaryImageUrl)}><Image/>{stillJob?.result?.temporaryImageUrl?'Retry storage · $0':'Generate still · $0.035'}</Button><Button onClick={generateMotion} loading={motionJob?.status==='queued'||motionJob?.status==='running'} disabled={!recordId||(!motionJob?.result?.temporaryVideoUrl&&!MOTION_GENERATION_ENABLED)||(!storedAssetKey(project,'image')&&!motionJob?.result?.temporaryVideoUrl)}><Play/>{motionJob?.result?.temporaryVideoUrl?'Retry video storage · $0':MOTION_GENERATION_ENABLED?'Animate · est. $0.325':'Motion paused'}</Button><input ref={uploadInput} type="file" accept="video/mp4,.mp4" onChange={uploadMotion} className="hidden"/><Button variant="outline" onClick={()=>uploadInput.current?.click()} loading={isUploading} disabled={!recordId}><Upload/>Upload motion MP4</Button><Button onClick={generateNarration} loading={voiceJob?.status==='queued'||voiceJob?.status==='running'} disabled={!recordId||(!project.narration.trim()&&!voiceJob?.result?.temporaryAudioUrl)}><Mic2/>{voiceJob?.result?.temporaryAudioUrl?'Retry audio storage · $0':`Narrate · est. $${narrationReservationEstimate(project.narration).toFixed(4)}`}</Button><Button onClick={renderFinal} loading={currentRenderActivity?.status==='queued'||currentRenderActivity?.status==='running'} disabled={!recordId||(!renderJob?.result?.temporaryRenderUrl&&!FINAL_RENDER_ENABLED)||(!storedAssetKey(project,'video')&&!renderJob?.result?.temporaryRenderUrl)} title={!FINAL_RENDER_ENABLED?FINAL_RENDER_BLOCK_REASON:undefined}><Clapperboard/>{renderJob?.result?.temporaryRenderUrl?'Retry final storage · $0':FINAL_RENDER_ENABLED?'Render final · usage-based':'Render paused'}</Button></div></div>{!MOTION_GENERATION_ENABLED&&<p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">Motion paused · Waiting on DeepSpace. No new FAL video attempts will be submitted. Upload a 4.5–5.5 second 9:16 MP4 to continue without FAL.</p>}</header>
-      <div className="grid gap-8 p-5 md:p-9 xl:grid-cols-[1fr_.72fr]"><div className="space-y-6"><Field label="Creator prompt"><Textarea value={project.prompt} onChange={e=>set('prompt',e.target.value)} placeholder="A launch film for a tiny camera that makes everyday walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed"/>{!project.prompt&&<p className="text-xs text-muted-foreground">Start with the raw thought. Every field remains editable.</p>}<Button className="mt-3" onClick={generateBrief} loading={queuing} disabled={!recordId}><Sparkles/>Generate AI brief</Button></Field><div className="grid gap-5 md:grid-cols-2"><Field label="Project name"><Input value={project.title} onChange={e=>set('title',e.target.value)}/></Field><Field label="Audience"><Input value={project.audience} onChange={e=>set('audience',e.target.value)}/></Field></div><Field label="Objective"><Textarea value={project.objective} onChange={e=>set('objective',e.target.value)} className="min-h-24 bg-card"/></Field><Field label="Visual direction"><Textarea value={project.visualDirection} onChange={e=>set('visualDirection',e.target.value)} className="min-h-24 bg-card"/></Field><Field label="Motion direction"><Textarea value={project.motionDirection} onChange={e=>set('motionDirection',e.target.value)} className="min-h-24 bg-card"/></Field><div className="grid gap-5 md:grid-cols-2"><Field label="Narration"><Textarea value={project.narration} onChange={e=>set('narration',e.target.value)} className="min-h-28 bg-card"/><p className={`text-xs ${countWords(project.narration)>NARRATION_HARD_MAX_WORDS?'text-destructive':'text-muted-foreground'}`}>{countWords(project.narration)} / {NARRATION_HARD_MAX_WORDS} words · target 8–11 · blank means silent</p><Select value={project.voiceId} onValueChange={value=>set('voiceId',value)}><SelectTrigger><SelectValue placeholder="Choose a voice"/></SelectTrigger><SelectContent>{MOTIONBRIEF_VOICES.map(voice=><SelectItem key={voice.id} value={voice.id}>{voice.name} · {voice.style}</SelectItem>)}</SelectContent></Select></Field><Field label="Headline"><Textarea value={project.headline} onChange={e=>set('headline',e.target.value)} className="min-h-28 bg-card font-semibold uppercase"/></Field></div></div>
-        <aside><div className="sticky top-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.28)]"><div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">{previewRenderUrl?<video src={previewRenderUrl} className="absolute inset-0 h-full w-full object-cover" controls playsInline loop/>:previewVideoUrl?<video src={previewVideoUrl} className="absolute inset-0 h-full w-full object-cover" controls playsInline loop/>:previewImageUrl?<img src={previewImageUrl} alt="Generated MotionBrief still" className="absolute inset-0 h-full w-full object-cover"/>:<><div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(255,107,53,.5),transparent_28%),linear-gradient(145deg,#40372a_0%,#151511_58%,#080807_100%)]"/><div className="absolute left-[12%] top-[18%] h-[38%] w-[70%] rotate-[-8deg] border border-white/20 bg-white/5 backdrop-blur-sm"/></>}{!previewRenderUrl&&<div className="pointer-events-none absolute inset-x-7 bottom-16"><p className="text-[10px] uppercase tracking-[.28em] text-white/55">MotionBrief preview</p><p className="mt-3 text-4xl font-black uppercase leading-[.88] tracking-[-.055em] text-white">{project.headline||'Your headline'}</p></div>}</div>{previewAudioUrl&&!previewRenderUrl&&<div className="border-t border-border p-3"><audio src={previewAudioUrl} controls className="w-full"/></div>}<div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground"><span>9:16 · 5 seconds</span><span>{previewRenderUrl?'Final MP4':previewAudioUrl?'Stored narration':previewVideoUrl?'Stored motion':previewImageUrl?'Stored still':'Mock · $0.00'}</span></div></div></aside></div></section>
-    <aside className="bg-shell p-5 md:p-7"><p className="text-xs font-semibold uppercase tracking-[.2em] text-muted-foreground">Production rail</p><div className="mt-5 space-y-2">{steps.map(([label,Icon],i)=>{const current=i===0?job:i===1?stillJob:i===2?motionJob:i===3?voiceJob:i===4?currentRenderActivity:undefined,active=current&&['queued','running'].includes(current.status),done=i===0?job?.status==='succeeded'||project.status!=='draft':i===1?Boolean(previewImageUrl):i===2?Boolean(previewVideoUrl):i===3?Boolean(previewAudioUrl):i===4?Boolean(previewRenderUrl):false;return <div key={label} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"><div className={`flex h-9 w-9 items-center justify-center rounded-lg ${done?'bg-primary text-primary-foreground':'bg-secondary text-muted-foreground'}`}><Icon/></div><div className="flex-1"><p className="font-medium">{label}</p><p className="text-xs text-muted-foreground">{done?'Ready':i===2&&!MOTION_GENERATION_ENABLED?'Waiting on DeepSpace':current?.status==='failed'?current.error??'Failed':active?current.progressMessage??'Working':i===0?'Editing':'Waiting'}</p></div><span className="text-xs text-muted-foreground">0{i+1}</span></div>})}</div><div className="mt-6 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">Final rendering wired</p><p className="mt-1 leading-relaxed">Shotstack combines the stored five-second motion, optional narration, and one headline into a durable 9:16 MP4. Motion remains blocked pending the FAL integration fix.</p></div></aside>
-  </div></div>
+  async function generateStill() {
+    if (!isSignedIn || !recordId) return toast.info('Save first', 'Save the brief before generating its visual.')
+    const recover = stillJob?.result?.temporaryImageUrl
+    if (!recover && !draft.stillPrompt.trim()) return toast.error('Image prompt required', 'Generate or edit the image prompt first.')
+    if (!recover && !confirmPaidCall('Provider: FAL\nModel: Seedream v5 Lite\nOutput: one portrait campaign visual\nEstimated cost: $0.035')) return
+    setQueuing(true)
+    try {
+      if (recover) {
+        await enqueue('motionbrief-store-still', { projectId: recordId, sourceUrl: recover }, { maxAttempts: 1 })
+        toast.success('Storage retry queued', 'Reusing the generated image at no generation cost.')
+      } else {
+        await enqueue('motionbrief-generate-still', { projectId: recordId, stillPrompt: draft.stillPrompt }, { maxAttempts: 1 })
+        toast.success('Visual queued', 'FAL is generating one campaign image.')
+      }
+    } catch (error) {
+      toast.error('Could not queue', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setQueuing(false)
+    }
+  }
+
+  async function generateNarration() {
+    if (!isSignedIn || !recordId) return toast.info('Save first', 'Save the brief before generating narration.')
+    const recover = voiceJob?.result?.temporaryAudioUrl
+    if (!recover && !narrationFitsFiveSeconds(draft.narration)) return toast.error('Narration timing', 'Use 8–13 words for a concise read.')
+    if (!recover && !confirmPaidCall(`Provider: ElevenLabs\nModel: eleven_flash_v2_5\nVoice: ${MOTIONBRIEF_VOICES.find(voice => voice.id === draft.voiceId)?.name ?? draft.voiceId}\nEstimated reservation: $${narrationReservationEstimate(draft.narration).toFixed(4)}`)) return
+    setQueuing(true)
+    try {
+      if (recover) {
+        await enqueue('motionbrief-store-narration', { projectId: recordId, dataUrl: recover }, { maxAttempts: 1 })
+        toast.success('Storage retry queued', 'Reusing the generated narration at no generation cost.')
+      } else {
+        await enqueue('motionbrief-generate-narration', { projectId: recordId, narration: draft.narration, voiceId: draft.voiceId }, { maxAttempts: 1 })
+        toast.success('Narration queued', 'ElevenLabs is recording the selected voice.')
+      }
+    } catch (error) {
+      toast.error('Could not queue', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setQueuing(false)
+    }
+  }
+
+  function packageMarkdown() {
+    const absoluteImageUrl = imageUrl ? new URL(imageUrl, window.location.origin).href : undefined
+    const absoluteAudioUrl = audioUrl ? new URL(audioUrl, window.location.origin).href : undefined
+    return buildCreativePackageMarkdown({ ...draft, imageUrl: absoluteImageUrl, audioUrl: absoluteAudioUrl })
+  }
+
+  async function copyPackage() {
+    await navigator.clipboard.writeText(packageMarkdown())
+    toast.success('Creative package copied', 'Paste the complete brief into your working document.')
+  }
+
+  function downloadPackage() {
+    const blobUrl = URL.createObjectURL(new Blob([packageMarkdown()], { type: 'text/markdown;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = safePackageFilename(draft.title)
+    link.click()
+    URL.revokeObjectURL(blobUrl)
+    toast.success('Package downloaded', 'The Markdown brief includes links to both generated assets.')
+  }
+
+  async function completePackage() {
+    if (!recordId || !packageReady) return toast.info('Finish the package', 'Generate both the visual and narration first.')
+    const next = { ...draft, status: 'complete' as const }
+    await putConfirmed(recordId, next)
+    setDraft(next)
+    toast.success('Creative package ready', 'Your brief, visual, headline, and narration are complete.')
+  }
+
+  useEffect(() => {
+    if (briefJob?.status !== 'succeeded' || !briefJob.result?.brief || appliedBriefJob.current === briefJob.id) return
+    appliedBriefJob.current = briefJob.id
+    const next = { ...draft, ...briefJob.result.brief, status: 'ready' as const }
+    setDraft(next)
+    if (recordId) void putConfirmed(recordId, next).then(() => toast.success('AI brief ready', 'Review and edit every field.')).catch(error => toast.error('Brief ready but not saved', error instanceof Error ? error.message : 'Save it manually.'))
+  }, [briefJob, draft, putConfirmed, recordId, toast])
+
+  useEffect(() => {
+    if (stillJob?.status !== 'succeeded' || stillJob.result?.asset?.kind !== 'image' || appliedStillJob.current === stillJob.id) return
+    appliedStillJob.current = stillJob.id
+    const next = { ...draft, imageUrl: appFileUrl(stillJob.result.asset.key), assetManifest: upsertAssetManifest(draft.assetManifest, stillJob.result.asset), status: 'ready' as const }
+    setDraft(next)
+    if (recordId) void putConfirmed(recordId, next).then(() => toast.success('Visual ready', 'The FAL image is stored in durable app storage.')).catch(error => toast.error('Image ready but not saved', error instanceof Error ? error.message : 'Save it manually.'))
+  }, [stillJob, draft, putConfirmed, recordId, toast])
+
+  useEffect(() => {
+    if (voiceJob?.status !== 'succeeded' || voiceJob.result?.asset?.kind !== 'audio' || appliedVoiceJob.current === voiceJob.id) return
+    appliedVoiceJob.current = voiceJob.id
+    const next = { ...draft, audioUrl: appFileUrl(voiceJob.result.asset.key), assetManifest: upsertAssetManifest(draft.assetManifest, voiceJob.result.asset), status: 'ready' as const }
+    setDraft(next)
+    if (recordId) void putConfirmed(recordId, next).then(() => toast.success('Narration ready', 'The ElevenLabs recording is stored in durable app storage.')).catch(error => toast.error('Narration ready but not saved', error instanceof Error ? error.message : 'Save it manually.'))
+  }, [voiceJob, draft, putConfirmed, recordId, toast])
+
+  const stepState = [
+    { job: briefJob, done: Boolean(recordId && draft.stillPrompt.trim()) },
+    { job: stillJob, done: Boolean(imageAsset) },
+    { job: voiceJob, done: Boolean(audioAsset) },
+    { job: undefined, done: draft.status === 'complete' },
+  ]
+
+  return (
+    <div className="min-h-full bg-background text-foreground">
+      <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[minmax(0,1fr)_390px]">
+        <main className="min-w-0 border-border lg:border-r">
+          <header className="border-b border-border px-5 py-7 md:px-9">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Prompt to campaign concept</p>
+            <h1 className="max-w-4xl text-3xl font-semibold tracking-[-.04em] md:text-5xl">Shape the idea. See it. Hear it.</h1>
+            <p className="mt-3 max-w-2xl text-muted-foreground">MotionBrief turns one rough prompt into an editable creative brief, a campaign visual, and a voiced concept package.</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save />Save brief</Button>
+              <Button onClick={generateStill} loading={stillJob?.status === 'queued' || stillJob?.status === 'running'} disabled={!recordId || (!draft.stillPrompt.trim() && !stillJob?.result?.temporaryImageUrl)}><Image />{stillJob?.result?.temporaryImageUrl ? 'Retry image storage · $0' : 'Generate visual · $0.035'}</Button>
+              <Button onClick={generateNarration} loading={voiceJob?.status === 'queued' || voiceJob?.status === 'running'} disabled={!recordId || (!draft.narration.trim() && !voiceJob?.result?.temporaryAudioUrl)}><Mic2 />{voiceJob?.result?.temporaryAudioUrl ? 'Retry audio storage · $0' : `Narrate · est. $${narrationReservationEstimate(draft.narration).toFixed(4)}`}</Button>
+            </div>
+          </header>
+
+          <div className="grid gap-8 p-5 md:p-9 xl:grid-cols-[1fr_.72fr]">
+            <div className="space-y-6">
+              <Field label="Creator prompt">
+                <Textarea value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed" />
+                <Button className="mt-3" onClick={generateBrief} loading={queuing || briefJob?.status === 'queued' || briefJob?.status === 'running'} disabled={!recordId}><Sparkles />Generate AI brief</Button>
+              </Field>
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Project name"><Input value={draft.title} onChange={event => set('title', event.target.value)} /></Field>
+                <Field label="Audience"><Input value={draft.audience} onChange={event => set('audience', event.target.value)} /></Field>
+              </div>
+              <Field label="Objective"><Textarea value={draft.objective} onChange={event => set('objective', event.target.value)} className="min-h-24 bg-card" /></Field>
+              <Field label="Visual direction"><Textarea value={draft.visualDirection} onChange={event => set('visualDirection', event.target.value)} className="min-h-24 bg-card" /></Field>
+              <Field label="Image prompt"><Textarea value={draft.stillPrompt} onChange={event => set('stillPrompt', event.target.value)} className="min-h-28 bg-card" /></Field>
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Narration">
+                  <Textarea value={draft.narration} onChange={event => set('narration', event.target.value)} className="min-h-28 bg-card" />
+                  <p className={`text-xs ${countWords(draft.narration) > NARRATION_HARD_MAX_WORDS ? 'text-destructive' : 'text-muted-foreground'}`}>{countWords(draft.narration)} / {NARRATION_HARD_MAX_WORDS} words · target 8–11</p>
+                  <Select value={draft.voiceId} onValueChange={value => set('voiceId', value)}><SelectTrigger><SelectValue placeholder="Choose a voice" /></SelectTrigger><SelectContent>{MOTIONBRIEF_VOICES.map(voice => <SelectItem key={voice.id} value={voice.id}>{voice.name} · {voice.style}</SelectItem>)}</SelectContent></Select>
+                </Field>
+                <Field label="Headline"><Textarea value={draft.headline} onChange={event => set('headline', event.target.value)} className="min-h-28 bg-card font-semibold uppercase" /></Field>
+              </div>
+            </div>
+
+            <aside className="space-y-4">
+              <div className="sticky top-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.28)]">
+                <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
+                  {imageUrl ? <img src={imageUrl} alt="Generated MotionBrief campaign visual" className="absolute inset-0 h-full w-full object-cover" /> : <><div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(255,107,53,.5),transparent_28%),linear-gradient(145deg,#40372a_0%,#151511_58%,#080807_100%)]" /><div className="absolute left-[12%] top-[18%] h-[38%] w-[70%] rotate-[-8deg] border border-white/20 bg-white/5 backdrop-blur-sm" /></>}
+                  <div className="pointer-events-none absolute inset-x-7 bottom-16"><p className="text-[10px] uppercase tracking-[.28em] text-white/60">MotionBrief concept</p><p className="mt-3 text-4xl font-black uppercase leading-[.88] tracking-[-.055em] text-white">{draft.headline || 'Your headline'}</p></div>
+                </div>
+                {audioUrl && <div className="border-t border-border p-3"><audio src={audioUrl} controls className="w-full" /></div>}
+                <div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground"><span>Portrait campaign visual</span><span>{audioUrl ? 'Voiced concept' : imageUrl ? 'Visual ready' : 'Live preview'}</span></div>
+              </div>
+            </aside>
+          </div>
+        </main>
+
+        <aside className="bg-shell p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[.2em] text-muted-foreground">Creative package</p>
+          <div className="mt-5 space-y-2">
+            {steps.map(([label, Icon], index) => {
+              const state = stepState[index]
+              const active = state.job && ['queued', 'running'].includes(state.job.status)
+              const message = state.done ? 'Ready' : state.job?.status === 'failed' ? state.job.error ?? 'Failed' : active ? state.job?.progressMessage ?? 'Working' : 'Waiting'
+              return <div key={label} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"><div className={`flex h-9 w-9 items-center justify-center rounded-lg ${state.done ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>{state.done ? <Check /> : <Icon />}</div><div className="flex-1"><p className="font-medium">{label}</p><p className="text-xs text-muted-foreground">{message}</p></div><span className="text-xs text-muted-foreground">0{index + 1}</span></div>
+            })}
+          </div>
+
+          <div className="mt-6 rounded-xl border border-border bg-card p-4">
+            <p className="font-medium">{draft.status === 'complete' ? 'Package complete' : 'Finish your package'}</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">The export contains the editable strategy, copy, image prompt, and durable shareable links to the generated visual and narration.</p>
+            <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100">Media links are viewable by anyone who receives them. Your editable project remains private to your account.</p>
+            <div className="mt-4 grid gap-2">
+              <Button onClick={completePackage} disabled={!packageReady || draft.status === 'complete'}><PackageCheck />{draft.status === 'complete' ? 'Creative package ready' : 'Mark package ready'}</Button>
+              <Button variant="outline" onClick={copyPackage} disabled={!recordId}><Clipboard />Copy brief</Button>
+              <Button variant="outline" onClick={downloadPackage} disabled={!recordId}><Download />Download Markdown</Button>
+              {imageUrl && <a className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-secondary" href={imageUrl} download><Download className="mr-2 h-4 w-4" />Download shareable visual</a>}
+              {audioUrl && <a className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-secondary" href={audioUrl} download><Download className="mr-2 h-4 w-4" />Download shareable narration</a>}
+            </div>
+          </div>
+
+          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Powered by three DeepSpace integrations: OpenAI for the brief, FAL for the visual, and ElevenLabs for narration.</p>
+        </aside>
+      </div>
+    </div>
+  )
 }
-function Field({label,children}:{label:string;children:ReactNode}){return <div className="space-y-2"><Label>{label}</Label>{children}</div>}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="space-y-2"><Label>{label}</Label>{children}</div>
+}

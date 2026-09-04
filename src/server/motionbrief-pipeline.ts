@@ -110,7 +110,7 @@ export async function generateCreativeBrief(
       messages: [
         {
           role: 'system',
-          content: 'You are a creative director for a five-second vertical video. Return only valid JSON with these non-empty string fields: title, audience, objective, visualDirection, motionDirection, narration, headline, stillPrompt, motionPrompt. Narration must be one short sentence of 8 to 11 words, never more than 13 words, and must not repeat the headline. Keep the headline under 8 words.',
+          content: 'You are a creative director shaping a multimedia campaign concept from one rough creator prompt. Return only valid JSON with these non-empty string fields: title, audience, objective, visualDirection, motionDirection, narration, headline, stillPrompt, motionPrompt. Make visualDirection and stillPrompt specific enough to generate one strong portrait campaign image. Treat motionDirection and motionPrompt as concise future-extension notes. Narration must be one short sentence of 8 to 11 words, never more than 13 words, and must not repeat the headline. Keep the headline under 8 words.',
         },
         { role: 'user', content: creatorPrompt.trim() },
       ],
