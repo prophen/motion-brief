@@ -13,11 +13,19 @@ MotionBrief is an interactive creative-concept studio. A creator enters one roug
 
 The app also uses DeepSpace records, confirmed mutations, background jobs, authentication, realtime job progress, and app-scoped file storage. Provider outputs are copied into durable storage rather than depending on expiring URLs.
 
-## Main tradeoff
+## Key tradeoffs
+
+### Reliable motion instead of generative video
 
 I originally planned to generate a five-second animation with FAL image-to-video. Even after provider fixes, that path was slow, unexpectedly expensive on one model, and inconsistent with the creator's edited direction. I replaced it with four selectable camera moves that preview instantly in the browser and map directly to Shotstack effects.
 
 This keeps the important path fast, affordable, and demonstrable while still producing a genuine final MP4. Generative motion can return later as an optional experiment without blocking the reliable core flow.
+
+### Faster visual iteration
+
+The first complete version used Seedream v5 Lite for still-image generation. Its output quality was stronger in my comparison, but generation took long enough to interrupt the interactive workflow. I switched the submitted app to FLUX.1 Schnell, using four inference steps and one portrait image. The result is somewhat less refined but still suitable for the campaign-concept preview, while returning quickly enough for a live demonstration.
+
+The app preserves the creator's control despite the faster model: the generated image prompt remains editable, generation starts only after an explicit click, and regenerating a visual invalidates any existing final MP4 so the export cannot silently use an outdated image.
 
 ## Work completed with Codex
 

@@ -41,6 +41,7 @@ import {
   latestStoredAsset,
   normalizeAssetManifest,
   normalizeProjectAssetManifest,
+  removeAssetKind,
   upsertAssetManifest,
   type StoredAsset,
 } from '../../lib/assets'
@@ -635,11 +636,13 @@ export default function HomePage() {
     appliedStillJob.current = stillJob.id
     const shouldNotify = jobsStartedHere.current.delete(stillJob.id)
     if (imageAsset?.key === stillJob.result.asset.key) return
+    const manifestWithoutRender = removeAssetKind(draft.assetManifest, 'render')
     const next = {
       ...draft,
       imageUrl: appFileUrl(stillJob.result.asset.key),
+      renderUrl: '',
       assetManifest: upsertAssetManifest(
-        draft.assetManifest,
+        manifestWithoutRender,
         stillJob.result.asset,
       ),
       status: 'ready' as const,
@@ -763,6 +766,12 @@ export default function HomePage() {
       return
     appliedRenderJob.current = renderJob.id
     const shouldNotify = jobsStartedHere.current.delete(renderJob.id)
+    if (
+      imageAsset &&
+      Date.parse(renderJob.result.asset.storedAt) <
+        Date.parse(imageAsset.storedAt)
+    )
+      return
     if (renderAsset?.key === renderJob.result.asset.key) return
     const next = {
       ...draft,
@@ -1144,7 +1153,9 @@ export default function HomePage() {
                 <Image />
                 {stillJob?.result?.temporaryImageUrl
                   ? 'Retry image storage · $0'
-                  : 'Generate visual · est. $0.006'}
+                  : imageAsset
+                    ? 'Regenerate visual · est. $0.006'
+                    : 'Generate visual · est. $0.006'}
               </Button>
               <Field id="motion-preset" label="Motion style">
                 <Select

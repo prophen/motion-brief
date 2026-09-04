@@ -79,6 +79,15 @@ export function upsertAssetManifest(value: string, asset: StoredAsset): string {
   return JSON.stringify([...assets, asset])
 }
 
+export function removeAssetKind(
+  value: string,
+  kind: StoredAsset['kind'],
+): string {
+  return JSON.stringify(
+    parseAssetManifest(value).filter((asset) => asset.kind !== kind),
+  )
+}
+
 export function latestStoredAsset(
   value: string,
   kind: StoredAsset['kind'],

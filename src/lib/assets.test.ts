@@ -6,6 +6,7 @@ import {
   normalizeAssetManifest,
   normalizeProjectAssetManifest,
   parseAssetManifest,
+  removeAssetKind,
   upsertAssetManifest,
   type StoredAsset,
 } from './assets'
@@ -84,6 +85,20 @@ describe('asset manifests', () => {
       parseAssetManifest(upsertAssetManifest(manifest, updated)),
     ).toHaveLength(2)
     expect(latestStoredAsset(manifest, 'video')).toEqual(video)
+  })
+
+  it('removes downstream assets of one kind', () => {
+    const render: StoredAsset = {
+      ...image,
+      kind: 'render',
+      key: 'final.mp4',
+      mimeType: 'video/mp4',
+    }
+    const manifest = JSON.stringify([image, render])
+
+    expect(parseAssetManifest(removeAssetKind(manifest, 'render'))).toEqual([
+      image,
+    ])
   })
 
   it('decodes a base64 narration data URL and rejects malformed input', () => {
