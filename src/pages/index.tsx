@@ -5,7 +5,6 @@ import {
   FileText,
   Image,
   Mic2,
-  Sparkles,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { buttonVariants } from '../components/ui'
@@ -28,9 +27,12 @@ export default function LandingPage() {
             to="/"
             className="inline-flex min-h-6 items-center gap-2.5 font-semibold tracking-[-.02em]"
           >
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="size-4" aria-hidden />
-            </span>
+            <img
+              src="/motionbrief-favicon-v3.png"
+              alt=""
+              className="size-7 rounded-lg object-contain"
+              aria-hidden="true"
+            />
             MotionBrief
           </Link>
           <div className="flex items-center gap-2">
