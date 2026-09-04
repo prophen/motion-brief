@@ -34,15 +34,15 @@ export default function LandingPage() {
             MotionBrief
           </Link>
           <div className="flex items-center gap-2">
-            <Link
+            <a
               className={buttonVariants({ variant: 'ghost' })}
-              to="/projects"
+              href="/projects"
             >
               Projects
-            </Link>
-            <Link className={buttonVariants({ size: 'sm' })} to="/home">
+            </a>
+            <a className={buttonVariants({ size: 'sm' })} href="/home">
               Open Studio <ArrowRight aria-hidden />
-            </Link>
+            </a>
           </div>
         </div>
       </header>
@@ -62,15 +62,15 @@ export default function LandingPage() {
               final vertical MP4—all in one focused workspace.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <Link className={buttonVariants({ size: 'lg' })} to="/home?new=1">
+              <a className={buttonVariants({ size: 'lg' })} href="/home?new=1">
                 Create a concept <ArrowRight aria-hidden />
-              </Link>
-              <Link
+              </a>
+              <a
                 className={buttonVariants({ variant: 'outline', size: 'lg' })}
-                to="/projects"
+                href="/projects"
               >
                 View projects
-              </Link>
+              </a>
             </div>
             <p className="mt-5 text-xs text-muted-foreground">
               You review and edit every field before generating paid assets.
