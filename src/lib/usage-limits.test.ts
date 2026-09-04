@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  paidUsageStage,
-  usageStageLabel,
-  utcDayStart,
-} from './usage-limits'
+import { paidUsageStage, usageStageLabel, utcDayStart } from './usage-limits'
 
 describe('usage limits', () => {
   it.each([

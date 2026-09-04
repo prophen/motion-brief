@@ -142,7 +142,9 @@ export class AppJobRoom extends JobRoom<Env> {
       const seconds = Math.ceil(
         (PUBLIC_USAGE_COOLDOWN_MS - (now - latest.used_at)) / 1000,
       )
-      throw new Error(`Please wait ${seconds} seconds before the next generation.`)
+      throw new Error(
+        `Please wait ${seconds} seconds before the next generation.`,
+      )
     }
 
     const globalCount = [
