@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuthProfileReady, useJobs, useMutations, useQuery } from 'deepspace'
 import { Check, Clipboard, Download, FileText, Image, Mic2, PackageCheck, Save, Sparkles } from 'lucide-react'
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, useToast } from '../../components/ui'
+import { Button, buttonVariants, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, useToast } from '../../components/ui'
 import { SCOPE_ID } from '../../constants'
 import { latestStoredAsset, normalizeAssetManifest, upsertAssetManifest, type StoredAsset } from '../../lib/assets'
 import { buildCreativePackageMarkdown, safePackageFilename } from '../../lib/creative-package'
@@ -261,10 +261,10 @@ export default function HomePage() {
   return (
     <div className="min-h-full bg-background text-foreground">
       <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[minmax(0,1fr)_390px]">
-        <main className="min-w-0 border-border lg:border-r">
+        <section aria-labelledby="studio-heading" className="min-w-0 border-border lg:border-r">
           <header className="border-b border-border px-5 py-7 md:px-9">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Prompt to campaign concept</p>
-            <h1 className="max-w-4xl text-3xl font-semibold tracking-[-.04em] md:text-5xl">Shape the idea. See it. Hear it.</h1>
+            <h1 id="studio-heading" className="max-w-4xl text-3xl font-semibold tracking-[-.04em] md:text-5xl">Shape the idea. See it. Hear it.</h1>
             <p className="mt-3 max-w-2xl text-muted-foreground">MotionBrief turns one rough prompt into an editable creative brief, a campaign visual, and a voiced concept package.</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save />Save brief</Button>
@@ -275,42 +275,43 @@ export default function HomePage() {
 
           <div className="grid gap-8 p-5 md:p-9 xl:grid-cols-[1fr_.72fr]">
             <div className="space-y-6">
-              <Field label="Creator prompt">
-                <Textarea value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed" />
+              <Field id="creator-prompt" label="Creator prompt">
+                <Textarea id="creator-prompt" value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed" />
                 <Button className="mt-3" onClick={generateBrief} loading={queuing || briefJob?.status === 'queued' || briefJob?.status === 'running'} disabled={!recordId}><Sparkles />Generate AI brief</Button>
               </Field>
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Project name"><Input value={draft.title} onChange={event => set('title', event.target.value)} /></Field>
-                <Field label="Audience"><Input value={draft.audience} onChange={event => set('audience', event.target.value)} /></Field>
+                <Field id="project-name" label="Project name"><Input id="project-name" value={draft.title} onChange={event => set('title', event.target.value)} /></Field>
+                <Field id="audience" label="Audience"><Input id="audience" value={draft.audience} onChange={event => set('audience', event.target.value)} /></Field>
               </div>
-              <Field label="Objective"><Textarea value={draft.objective} onChange={event => set('objective', event.target.value)} className="min-h-24 bg-card" /></Field>
-              <Field label="Visual direction"><Textarea value={draft.visualDirection} onChange={event => set('visualDirection', event.target.value)} className="min-h-24 bg-card" /></Field>
-              <Field label="Image prompt"><Textarea value={draft.stillPrompt} onChange={event => set('stillPrompt', event.target.value)} className="min-h-28 bg-card" /></Field>
+              <Field id="objective" label="Objective"><Textarea id="objective" value={draft.objective} onChange={event => set('objective', event.target.value)} className="min-h-24 bg-card" /></Field>
+              <Field id="visual-direction" label="Visual direction"><Textarea id="visual-direction" value={draft.visualDirection} onChange={event => set('visualDirection', event.target.value)} className="min-h-24 bg-card" /></Field>
+              <Field id="image-prompt" label="Image prompt"><Textarea id="image-prompt" value={draft.stillPrompt} onChange={event => set('stillPrompt', event.target.value)} className="min-h-28 bg-card" /></Field>
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Narration">
-                  <Textarea value={draft.narration} onChange={event => set('narration', event.target.value)} className="min-h-28 bg-card" />
+                <Field id="narration" label="Narration">
+                  <Textarea id="narration" value={draft.narration} onChange={event => set('narration', event.target.value)} className="min-h-28 bg-card" />
                   <p className={`text-xs ${countWords(draft.narration) > NARRATION_HARD_MAX_WORDS ? 'text-destructive' : 'text-muted-foreground'}`}>{countWords(draft.narration)} / {NARRATION_HARD_MAX_WORDS} words · target 8–11</p>
-                  <Select value={draft.voiceId} onValueChange={value => set('voiceId', value)}><SelectTrigger><SelectValue placeholder="Choose a voice" /></SelectTrigger><SelectContent>{MOTIONBRIEF_VOICES.map(voice => <SelectItem key={voice.id} value={voice.id}>{voice.name} · {voice.style}</SelectItem>)}</SelectContent></Select>
+                  <Label htmlFor="narration-voice">Narration voice</Label>
+                  <Select value={draft.voiceId} onValueChange={value => set('voiceId', value)}><SelectTrigger id="narration-voice"><SelectValue placeholder="Choose a voice" /></SelectTrigger><SelectContent>{MOTIONBRIEF_VOICES.map(voice => <SelectItem key={voice.id} value={voice.id}>{voice.name} · {voice.style}</SelectItem>)}</SelectContent></Select>
                 </Field>
-                <Field label="Headline"><Textarea value={draft.headline} onChange={event => set('headline', event.target.value)} className="min-h-28 bg-card font-semibold uppercase" /></Field>
+                <Field id="headline" label="Headline"><Textarea id="headline" value={draft.headline} onChange={event => set('headline', event.target.value)} className="min-h-28 bg-card font-semibold uppercase" /></Field>
               </div>
             </div>
 
-            <aside className="space-y-4">
+            <aside aria-label="Campaign concept preview" className="space-y-4">
               <div className="sticky top-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.28)]">
                 <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
                   {imageUrl ? <img src={imageUrl} alt="Generated MotionBrief campaign visual" className="absolute inset-0 h-full w-full object-cover" /> : <><div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(255,107,53,.5),transparent_28%),linear-gradient(145deg,#40372a_0%,#151511_58%,#080807_100%)]" /><div className="absolute left-[12%] top-[18%] h-[38%] w-[70%] rotate-[-8deg] border border-white/20 bg-white/5 backdrop-blur-sm" /></>}
                   <div className="pointer-events-none absolute inset-x-7 bottom-16"><p className="text-[10px] uppercase tracking-[.28em] text-white/60">MotionBrief concept</p><p className="mt-3 text-4xl font-black uppercase leading-[.88] tracking-[-.055em] text-white">{draft.headline || 'Your headline'}</p></div>
                 </div>
-                {audioUrl && <div className="border-t border-border p-3"><audio src={audioUrl} controls className="w-full" /></div>}
+                {audioUrl && <div className="border-t border-border p-3"><audio aria-label="Generated narration preview" src={audioUrl} controls className="w-full" /></div>}
                 <div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground"><span>Portrait campaign visual</span><span>{audioUrl ? 'Voiced concept' : imageUrl ? 'Visual ready' : 'Live preview'}</span></div>
               </div>
             </aside>
           </div>
-        </main>
+        </section>
 
-        <aside className="bg-shell p-5 md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[.2em] text-muted-foreground">Creative package</p>
+        <aside aria-labelledby="package-heading" className="bg-shell p-5 md:p-7">
+          <h2 id="package-heading" className="text-xs font-semibold uppercase tracking-[.2em] text-muted-foreground">Creative package</h2>
           <div className="mt-5 space-y-2">
             {steps.map(([label, Icon], index) => {
               const state = stepState[index]
@@ -321,15 +322,15 @@ export default function HomePage() {
           </div>
 
           <div className="mt-6 rounded-xl border border-border bg-card p-4">
-            <p className="font-medium">{draft.status === 'complete' ? 'Package complete' : 'Finish your package'}</p>
+            <h3 className="font-medium">{draft.status === 'complete' ? 'Package complete' : 'Finish your package'}</h3>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">The export contains the editable strategy, copy, image prompt, and durable shareable links to the generated visual and narration.</p>
             <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100">Media links are viewable by anyone who receives them. Your editable project remains private to your account.</p>
             <div className="mt-4 grid gap-2">
               <Button onClick={completePackage} disabled={!packageReady || draft.status === 'complete'}><PackageCheck />{draft.status === 'complete' ? 'Creative package ready' : 'Mark package ready'}</Button>
               <Button variant="outline" onClick={copyPackage} disabled={!recordId}><Clipboard />Copy brief</Button>
               <Button variant="outline" onClick={downloadPackage} disabled={!recordId}><Download />Download Markdown</Button>
-              {imageUrl && <a className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-secondary" href={imageUrl} download><Download className="mr-2 h-4 w-4" />Download shareable visual</a>}
-              {audioUrl && <a className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-secondary" href={audioUrl} download><Download className="mr-2 h-4 w-4" />Download shareable narration</a>}
+              {imageUrl && <a className={buttonVariants({ variant: 'outline' })} href={imageUrl} download><Download />Download shareable visual</a>}
+              {audioUrl && <a className={buttonVariants({ variant: 'outline' })} href={audioUrl} download><Download />Download shareable narration</a>}
             </div>
           </div>
 
@@ -340,6 +341,6 @@ export default function HomePage() {
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="space-y-2"><Label>{label}</Label>{children}</div>
+function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
+  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label>{children}</div>
 }
