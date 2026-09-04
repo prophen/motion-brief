@@ -1299,6 +1299,18 @@ export default function HomePage() {
                   ? 'Retry video storage · $0'
                   : 'Animate · $0.20'}
               </Button>
+              {motionJob && (
+                <p
+                  role="status"
+                  className={`text-sm ${motionJob.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}
+                >
+                  {motionJob.status === 'failed'
+                    ? `Animation failed: ${motionJob.error ?? 'Unknown provider error'}`
+                    : motionJob.status === 'succeeded'
+                      ? 'Animation complete.'
+                      : `${motionJob.progressMessage ?? 'Cosmos is generating the animation.'} This can take several minutes.`}
+                </p>
+              )}
             </div>
             <aside
               aria-label="Visual preview"

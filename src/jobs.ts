@@ -258,7 +258,7 @@ export async function runJob(
       )
       return
     }
-    if (resume.polls >= 144) throw new Error('fal_motion_poll_timeout')
+    if (resume.polls >= 300) throw new Error('fal_motion_poll_timeout')
     const polled = await pollFalMotion(env, resume.requestId)
     if (polled.status === 'failed') throw new Error(polled.error)
     if (polled.status === 'pending') {

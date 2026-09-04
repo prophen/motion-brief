@@ -232,7 +232,7 @@ A second deployed Wan submission using the healthy provider-native `v3b.fal.medi
 
 ### Lower-cost motion model update (2026-09-03)
 
-Free catalog discovery confirmed `fal-ai/cosmos-predict-2.5/image-to-video` is active, commercial, runnable, and billed at a fixed **$0.20 per video**. It accepts `prompt` and `image_url`, produces MP4 with `video_output_type: "X264 (.mp4)"`, and supports up to 93 frames. MotionBrief now uses 93 frames, 35 inference steps, guidance scale 7, high quality, and asynchronous output. Unlike Wan, Cosmos does not expose an exact duration or aspect-ratio parameter; the final Shotstack edit uses the measured clip duration, caps the final output at five seconds, and crops to 9:16.
+Free catalog discovery confirmed `fal-ai/cosmos-predict-2.5/image-to-video` is active, commercial, runnable, and billed at a fixed **$0.20 per video**. It accepts `prompt` and `image_url`, produces MP4 with `video_output_type: "X264 (.mp4)"`, and supports up to 93 frames. MotionBrief now uses 93 frames, 20 inference steps, guidance scale 7, medium quality, and asynchronous output. Unlike Wan, Cosmos does not expose an exact duration or aspect-ratio parameter; the final Shotstack edit uses the measured clip duration, caps the final output at five seconds, and crops to 9:16. The first 35-step/high-quality attempt remained pending beyond the original 7.5-minute polling window, so the production settings were reduced and the polling allowance extended.
 
 ## Provider controls (2026-09-02)
 
