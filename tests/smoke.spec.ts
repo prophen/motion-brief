@@ -73,6 +73,20 @@ test.describe('Smoke tests', () => {
     await expect(page.getByTestId('nav-user-name')).toHaveCount(0)
   })
 
+  test('saving a signed-out prompt opens the sign-in overlay', async ({
+    page,
+  }) => {
+    await page.goto('/home')
+    await page
+      .getByLabel('Creator prompt')
+      .fill('A small camera follows a weekend ferry ride')
+    await page.getByRole('button', { name: 'Save prompt' }).click()
+
+    await expect(
+      page.getByRole('heading', { name: 'Sign in to DeepSpace' }),
+    ).toBeVisible()
+  })
+
   test('an unsaved new prompt survives an auth-style return to /home', async ({
     page,
   }) => {

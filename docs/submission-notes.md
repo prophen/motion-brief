@@ -27,16 +27,15 @@ I directed when paid smoke tests were allowed, manually tested the generated bri
 
 ## Final verification checklist
 
-- [ ] Start from a freshly saved creator prompt.
-- [ ] Confirm OpenAI produces an editable brief.
-- [ ] Edit and save at least one generated field.
-- [ ] Confirm FAL generates and durably stores the visual.
-- [ ] Choose a different ElevenLabs voice and generate narration.
-- [ ] Select each motion preset and verify its instant preview.
-- [ ] Render and preview the final Shotstack MP4.
-- [ ] Reload and verify that the project and media persist.
-- [ ] Mark the creative package ready.
-- [ ] Copy and download the Markdown package.
-- [ ] Download the visual and narration assets.
-- [ ] Check the deployed app on desktop and mobile widths.
-- [ ] Confirm `/` redirects to `/home`.
+- [x] Start from a freshly saved creator prompt.
+- [x] Confirm OpenAI produces an editable brief.
+- [x] Edit and save at least one generated field.
+- [x] Confirm FAL generates and durably stores the visual.
+- [x] Choose a different ElevenLabs voice and generate narration.
+- [x] Select each motion preset and verify its instant preview.
+- [x] Render and preview the final Shotstack MP4.
+- [x] Reload and verify that the project and media persist.
+- [x] Copy and download the Markdown package.
+- [x] Download the visual and narration assets.
+- [x] Check the deployed app on desktop and mobile widths.
+- [x] Confirm `/` displays the landing page.

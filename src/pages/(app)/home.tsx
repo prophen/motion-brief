@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useAuthProfileReady, useJobs, useMutations, useQuery } from 'deepspace'
+import {
+  AuthOverlay,
+  useAuthProfileReady,
+  useJobs,
+  useMutations,
+  useQuery,
+} from 'deepspace'
 import {
   Check,
   ChevronLeft,
@@ -137,6 +143,7 @@ export default function HomePage() {
   const [recordId, setRecordId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [queuing, setQueuing] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
   const [renderAttemptStartedAt, setRenderAttemptStartedAt] = useState<
     number | null
@@ -290,11 +297,10 @@ export default function HomePage() {
   }, [creatingNew, draft.prompt, isSignedIn, recordId, restoringPendingDraft])
 
   async function save() {
-    if (!isSignedIn)
-      return toast.info(
-        'Sign in to save',
-        'Saving and generation require an account.',
-      )
+    if (!isSignedIn) {
+      setShowAuthModal(true)
+      return
+    }
     const scopedManifest = recordId
       ? normalizeProjectAssetManifest(
           draft.assetManifest,
@@ -1409,6 +1415,9 @@ export default function HomePage() {
           )}
         </div>
       </div>
+      {showAuthModal && !isSignedIn && (
+        <AuthOverlay onClose={() => setShowAuthModal(false)} />
+      )}
     </section>
   )
 }
