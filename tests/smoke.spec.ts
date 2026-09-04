@@ -107,6 +107,24 @@ test.describe('Smoke tests', () => {
     ).toBeVisible()
   })
 
+  test('a pending prompt wins over a stale private-project URL', async ({
+    page,
+  }) => {
+    const prompt = 'A hand-drawn map comes alive during a road trip'
+    await page.addInitScript((savedPrompt) => {
+      window.sessionStorage.setItem(
+        'motionbrief:creator-prompt-draft',
+        savedPrompt,
+      )
+    }, prompt)
+
+    await page.goto('/home?project=private-project-from-before-sign-out')
+
+    await expect(page.getByText('Project not found')).toHaveCount(0)
+    await expect(page).toHaveURL(/\/home\?new=1$/)
+    await expect(page.getByLabel('Creator prompt')).toHaveValue(prompt)
+  })
+
   test('unknown route shows 404', async ({ page }) => {
     await page.goto('/nonexistent-page-xyz')
     await waitForApp(page)

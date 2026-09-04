@@ -160,14 +160,17 @@ export default function HomePage() {
   const preflightRequestedAt = useRef<number | null>(null)
   const jobsStartedHere = useRef(new Set<string>())
 
-  const restoringPendingDraft = Boolean(
-    !requestedProjectId && pendingCreatorPrompt.current,
-  )
-  const stored = requestedProjectId
-    ? records.find((record) => record.recordId === requestedProjectId)
-    : creatingNew || restoringPendingDraft
-      ? undefined
-      : records[0]
+  // Unsaved user input is more important than a stale project URL left over
+  // from before sign-out. Restore it as a new concept before querying a
+  // project that an anonymous/auth-transition connection cannot read yet.
+  const restoringPendingDraft = Boolean(pendingCreatorPrompt.current)
+  const stored = restoringPendingDraft
+    ? undefined
+    : requestedProjectId
+      ? records.find((record) => record.recordId === requestedProjectId)
+      : creatingNew || restoringPendingDraft
+        ? undefined
+        : records[0]
   const briefJob = useMemo(
     () => latestJob(jobs, ['motionbrief-generate-brief'], recordId),
     [jobs, recordId],
@@ -269,7 +272,8 @@ export default function HomePage() {
         ...freshMotionProject(),
         prompt: pendingCreatorPrompt.current,
       })
-      if (!creatingNew) setSearchParams({ new: '1' }, { replace: true })
+      if (!creatingNew || requestedProjectId)
+        setSearchParams({ new: '1' }, { replace: true })
       return
     }
     if (!stored || loadedRecord.current === stored.recordId) return
@@ -281,7 +285,13 @@ export default function HomePage() {
       motionPreset: normalizeMotionPreset(stored.data.motionPreset),
       assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]'),
     })
-  }, [creatingNew, restoringPendingDraft, setSearchParams, stored])
+  }, [
+    creatingNew,
+    requestedProjectId,
+    restoringPendingDraft,
+    setSearchParams,
+    stored,
+  ])
 
   // OAuth may leave and reload the app. Keep an unsaved new-project prompt in
   // this tab so the auth round trip does not discard what the creator typed.
