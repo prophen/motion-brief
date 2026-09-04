@@ -24,6 +24,14 @@ import { registerAgent } from './src/ai/agent.js'
 import { buildTools } from './src/ai/tools.js'
 import { tasks as cronTasks, runTask as runCronTask } from './src/cron.js'
 import { runJob } from './src/jobs.js'
+import {
+  paidUsageStage,
+  PUBLIC_DAILY_LIMIT_PER_STAGE,
+  PUBLIC_USAGE_COOLDOWN_MS,
+  usageStageLabel,
+  utcDayStart,
+  type UsageStage,
+} from './src/lib/usage-limits.js'
 import { schemas } from './src/schemas.js'
 import { registerActionRoutes } from './src/server/action-routes.js'
 import {
@@ -75,10 +83,88 @@ export class AppJobRoom extends JobRoom<Env> {
         return role === 'member' || role === 'admin'
       },
     })
+    this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS motionbrief_usage (
+        user_id TEXT NOT NULL,
+        stage TEXT NOT NULL,
+        job_id TEXT NOT NULL,
+        used_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, stage)
+      )
+    `)
+    this.sql.exec(
+      'CREATE INDEX IF NOT EXISTS idx_motionbrief_usage_stage_time ON motionbrief_usage(stage, used_at)',
+    )
   }
 
   protected async onJob(job: Job, context: JobContext): Promise<unknown> {
+    const usageStage = paidUsageStage(job.type)
+    if (usageStage) this.reservePublicUsage(job, usageStage)
     return await runJob(job, context, this.env)
+  }
+
+  /**
+   * Atomically reserves developer-billed usage in the same Durable Object
+   * that serializes job execution. The owner remains exempt for development
+   * and demos; every other signed-in account gets one call per paid stage.
+   */
+  private reservePublicUsage(job: Job, stage: UsageStage): void {
+    const userId = job.enqueuedBy
+    if (!userId || userId.startsWith('anon-')) {
+      throw new Error('Sign in before using a generated stage.')
+    }
+    if (userId === this.env.OWNER_USER_ID) return
+
+    const existing = [
+      ...this.sql.exec<{ job_id: string; used_at: number }>(
+        'SELECT job_id, used_at FROM motionbrief_usage WHERE user_id = ? AND stage = ? LIMIT 1',
+        userId,
+        stage,
+      ),
+    ][0]
+    // Polling jobs resume through onJob with the same id. Their original
+    // reservation remains valid and must not consume another allowance.
+    if (existing?.job_id === job.id) return
+    if (existing) {
+      throw new Error(
+        `This account has already used its one ${usageStageLabel(stage)} generation.`,
+      )
+    }
+
+    const now = Date.now()
+    const latest = [
+      ...this.sql.exec<{ used_at: number }>(
+        'SELECT used_at FROM motionbrief_usage WHERE user_id = ? ORDER BY used_at DESC LIMIT 1',
+        userId,
+      ),
+    ][0]
+    if (latest && now - latest.used_at < PUBLIC_USAGE_COOLDOWN_MS) {
+      const seconds = Math.ceil(
+        (PUBLIC_USAGE_COOLDOWN_MS - (now - latest.used_at)) / 1000,
+      )
+      throw new Error(`Please wait ${seconds} seconds before the next generation.`)
+    }
+
+    const globalCount = [
+      ...this.sql.exec<{ count: number }>(
+        'SELECT COUNT(*) AS count FROM motionbrief_usage WHERE stage = ? AND used_at >= ?',
+        stage,
+        utcDayStart(now),
+      ),
+    ][0]?.count
+    if ((globalCount ?? 0) >= PUBLIC_DAILY_LIMIT_PER_STAGE) {
+      throw new Error(
+        `Today's shared ${usageStageLabel(stage)} allowance has been reached. Please try again tomorrow.`,
+      )
+    }
+
+    this.sql.exec(
+      'INSERT INTO motionbrief_usage (user_id, stage, job_id, used_at) VALUES (?, ?, ?, ?)',
+      userId,
+      stage,
+      job.id,
+      now,
+    )
   }
 }
 

@@ -230,6 +230,15 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
     const billingMode = integrations[integrationName]?.billing ?? 'developer'
 
     const auth = await resolveAuth(c.req.raw, c.env)
+    // MotionBrief's developer-billed calls are orchestrated by the capped
+    // JobRoom. Keep the generic browser proxy owner-only so callers cannot
+    // bypass those limits by posting to an integration endpoint directly.
+    if (
+      billingMode === 'developer' &&
+      auth?.userId !== c.env.OWNER_USER_ID
+    ) {
+      return c.json({ error: 'Developer-billed integrations are job-only' }, 403)
+    }
     if (!auth && billingMode === 'user') {
       return c.json({ error: 'Sign in required for this integration' }, 401)
     }

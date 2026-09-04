@@ -66,6 +66,12 @@ import { buildShotstackTextOnlySmokeEdit } from './lib/shotstack.js'
 const FAL_PROVIDER_SMOKE_MODEL = 'wan/v2.6/text-to-video'
 const FAL_PROVIDER_SMOKE_MAX_COST_USD = 1
 
+function requireSignedInJob(job: Job): void {
+  if (!job.enqueuedBy || job.enqueuedBy.startsWith('anon-')) {
+    throw new Error('generation_requires_sign_in')
+  }
+}
+
 export async function runJob(
   job: Job,
   ctx: JobContext,
@@ -118,8 +124,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-preflight-render') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID)
-      throw new Error('preflight_job_requires_app_owner')
+    requireSignedInJob(job)
     const payload = job.payload as {
       projectId: string
       imageKey: string
@@ -147,9 +152,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-generate-brief') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('paid_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as { projectId: string; prompt: string }
     ctx.progress(0.05, 'Validating paid-call gate')
     const brief = await generateCreativeBrief(env, payload.prompt)
@@ -163,9 +166,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-generate-still') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('paid_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as { projectId: string; stillPrompt: string }
     const resume = job.resumeFrom as
       { requestId: string; polls: number } | undefined
@@ -217,9 +218,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-store-still') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('storage_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as { projectId: string; sourceUrl: string }
     ctx.progress(0.2, 'Retrying durable storage')
     const asset = await storeRemoteAsset(env, {
@@ -310,9 +309,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-generate-narration') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('paid_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as {
       projectId: string
       narration: string
@@ -343,9 +340,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-store-narration') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('storage_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as { projectId: string; dataUrl: string }
     ctx.progress(0.2, 'Retrying durable narration storage')
     const asset = await storeNarrationDataUrl(env, payload)
@@ -354,9 +349,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-restorage-narration') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('storage_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as { projectId: string; audioKey: string }
     ctx.progress(0.2, 'Updating narration filename')
     const asset = await restorageNarrationAsset(env, {
@@ -370,9 +363,7 @@ export async function runJob(
   if (job.type === 'motionbrief-render-final') {
     if (!FINAL_RENDER_ENABLED)
       throw new Error('shotstack_render_temporarily_paused')
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('paid_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as {
       projectId: string
       headline: string
@@ -433,9 +424,7 @@ export async function runJob(
   }
 
   if (job.type === 'motionbrief-store-render') {
-    if (!job.enqueuedBy || job.enqueuedBy !== env.OWNER_USER_ID) {
-      throw new Error('storage_job_requires_app_owner')
-    }
+    requireSignedInJob(job)
     const payload = job.payload as { projectId: string; sourceUrl: string }
     ctx.progress(0.2, 'Retrying durable final-video storage')
     const asset = await storeRemoteAsset(env, {

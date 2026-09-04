@@ -814,6 +814,20 @@ export default function HomePage() {
         })
   }, [draft, putConfirmed, recordId, renderAsset?.key, renderJob, toast])
 
+  useEffect(() => {
+    for (const job of jobs) {
+      if (
+        job.status !== 'failed' ||
+        !jobsStartedHere.current.delete(job.id)
+      )
+        continue
+      toast.error(
+        'Generation stopped',
+        job.error ?? 'The request could not be completed. Please try again.',
+      )
+    }
+  }, [jobs, toast])
+
   const stepState = [
     { job: briefJob, done: Boolean(recordId && draft.stillPrompt.trim()) },
     { job: stillJob, done: Boolean(imageAsset) },
@@ -918,7 +932,8 @@ export default function HomePage() {
               {draft.title || 'Untitled creative brief'}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Work through one focused stage at a time.
+              Work through one focused stage at a time. Signed-in guests get
+              one generation per paid stage.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
