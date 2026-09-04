@@ -235,6 +235,8 @@ export default function HomePage() {
   const renderAsset = latestStoredAsset(projectAssetManifest, 'render')
   const imageUrl = imageAsset ? appFileUrl(imageAsset.key) : ''
   const videoUrl = videoAsset ? appFileUrl(videoAsset.key) : ''
+  const temporaryVideoUrl = motionJob?.result?.temporaryVideoUrl ?? ''
+  const previewVideoUrl = videoUrl || temporaryVideoUrl
   const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : ''
   const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : ''
   const narrationNeedsMp3Repair = Boolean(
@@ -973,9 +975,9 @@ export default function HomePage() {
             playsInline
             loop
           />
-        ) : videoUrl ? (
+        ) : previewVideoUrl ? (
           <video
-            src={videoUrl}
+            src={previewVideoUrl}
             aria-label="Generated MotionBrief animation"
             className="absolute inset-0 h-full w-full object-cover"
             controls
@@ -1306,9 +1308,11 @@ export default function HomePage() {
                 >
                   {motionJob.status === 'failed'
                     ? `Animation failed: ${motionJob.error ?? 'Unknown provider error'}`
-                    : motionJob.status === 'succeeded'
+                    : motionJob.status === 'succeeded' && videoAsset
                       ? 'Animation complete.'
-                      : `${motionJob.progressMessage ?? 'Cosmos is generating the animation.'} This can take several minutes.`}
+                      : motionJob.status === 'succeeded' && temporaryVideoUrl
+                        ? 'Animation generated. Previewing the temporary result; use “Retry video storage” to save it permanently at no generation cost.'
+                        : `${motionJob.progressMessage ?? 'Cosmos is generating the animation.'} This can take several minutes.`}
                 </p>
               )}
             </div>
