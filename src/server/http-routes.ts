@@ -27,7 +27,10 @@ function jwtConfig(env: Env): JwtVerifierConfig {
   return { publicKey: env.AUTH_JWT_PUBLIC_KEY, issuer: env.AUTH_JWT_ISSUER }
 }
 
-export async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null> {
+export async function resolveAuth(
+  req: Request,
+  env: Env,
+): Promise<VerifyResult | null> {
   const header = req.headers.get('Authorization')
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null
   if (!token) return null
@@ -35,11 +38,16 @@ export async function resolveAuth(req: Request, env: Env): Promise<VerifyResult 
 }
 
 /** Agent credentials are valid only at the exact origin receiving the request. */
-export async function resolveAgentAuth(req: Request, env: Env): Promise<VerifyResult | null> {
+export async function resolveAgentAuth(
+  req: Request,
+  env: Env,
+): Promise<VerifyResult | null> {
   const header = req.headers.get('Authorization')
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null
   if (!token) return null
-  return (await verifyAgentToken(jwtConfig(env), token, new URL(req.url).origin)).result
+  return (
+    await verifyAgentToken(jwtConfig(env), token, new URL(req.url).origin)
+  ).result
 }
 
 /**
@@ -105,7 +113,10 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
       await authWorkerFetch(c.env, '/api/auth/sign-out', {
         method: c.req.method,
         headers: c.req.raw.headers,
-        body: c.req.method !== 'GET' && c.req.method !== 'HEAD' ? c.req.raw.body : undefined,
+        body:
+          c.req.method !== 'GET' && c.req.method !== 'HEAD'
+            ? c.req.raw.body
+            : undefined,
       })
     } catch {
       // Still expire the app-scoped cookie below. A network/auth-worker
@@ -127,7 +138,10 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
     const res = await authWorkerFetch(c.env, url.pathname + url.search, {
       method: c.req.method,
       headers: c.req.raw.headers,
-      body: c.req.method !== 'GET' && c.req.method !== 'HEAD' ? c.req.raw.body : undefined,
+      body:
+        c.req.method !== 'GET' && c.req.method !== 'HEAD'
+          ? c.req.raw.body
+          : undefined,
     })
     const headers = new Headers(res.headers)
     const setCookie = headers.get('set-cookie')
@@ -161,7 +175,10 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
   app.get('/api/integrations', async (c) => {
     try {
       const res = await apiWorkerFetch(c.env, '/api/integrations')
-      return new Response(res.body, { status: res.status, headers: res.headers })
+      return new Response(res.body, {
+        status: res.status,
+        headers: res.headers,
+      })
     } catch {
       return c.json({ error: 'Failed to fetch integration catalog' }, 502)
     }
@@ -176,7 +193,10 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
       const res = await apiWorkerFetch(c.env, '/api/integrations/status', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
-      return new Response(res.body, { status: res.status, headers: res.headers })
+      return new Response(res.body, {
+        status: res.status,
+        headers: res.headers,
+      })
     } catch {
       return c.json({ error: 'Status proxy failed' }, 502)
     }
@@ -196,7 +216,10 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         },
       )
-      return new Response(res.body, { status: res.status, headers: res.headers })
+      return new Response(res.body, {
+        status: res.status,
+        headers: res.headers,
+      })
     } catch {
       return c.json({ error: 'Disconnect proxy failed' }, 502)
     }
@@ -241,7 +264,10 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
         headers,
         body,
       })
-      return new Response(res.body, { status: res.status, headers: res.headers })
+      return new Response(res.body, {
+        status: res.status,
+        headers: res.headers,
+      })
     } catch {
       return c.json({ error: 'Integration proxy failed' }, 502)
     }
@@ -280,7 +306,8 @@ export function registerPlatformProxyRoutes(app: Hono<AppContext>): void {
     const contentType = resp.headers.get('content-type') ?? ''
     if (contentType.includes('application/json')) {
       const body = (await resp.json()) as Record<string, unknown>
-      const rewriteUrl = (value: string) => value.replace(/^https?:\/\/[^/]+/, url.origin)
+      const rewriteUrl = (value: string) =>
+        value.replace(/^https?:\/\/[^/]+/, url.origin)
       if (typeof body.url === 'string') body.url = rewriteUrl(body.url)
       if (Array.isArray(body.files)) {
         for (const file of body.files as Array<Record<string, unknown>>) {
@@ -290,7 +317,10 @@ export function registerPlatformProxyRoutes(app: Hono<AppContext>): void {
       return c.json(body, resp.status as ContentfulStatusCode)
     }
 
-    return new Response(resp.body, { status: resp.status, headers: resp.headers })
+    return new Response(resp.body, {
+      status: resp.status,
+      headers: resp.headers,
+    })
   })
 
   // Same-origin browser proxy for authenticated SDK hooks. Keep this an exact
@@ -299,7 +329,8 @@ export function registerPlatformProxyRoutes(app: Hono<AppContext>): void {
     const url = new URL(c.req.url)
     const method = c.req.method
     const route = BROWSER_PROXY_ROUTES.find(
-      (candidate) => candidate.method === method && candidate.path === url.pathname,
+      (candidate) =>
+        candidate.method === method && candidate.path === url.pathname,
     )
     if (!route) {
       return c.json({ error: 'not_found' }, 404)
@@ -313,7 +344,8 @@ export function registerPlatformProxyRoutes(app: Hono<AppContext>): void {
     forwardedParams.set('appId', c.env.DEEPSPACE_APP_ID)
     const queryString = forwardedParams.toString()
     const apiPath =
-      url.pathname.replace('/_deepspace/', '/api/') + (queryString ? `?${queryString}` : '')
+      url.pathname.replace('/_deepspace/', '/api/') +
+      (queryString ? `?${queryString}` : '')
 
     const headers = new Headers(c.req.raw.headers)
     headers.delete('x-user-id')
@@ -329,7 +361,9 @@ export function registerPlatformProxyRoutes(app: Hono<AppContext>): void {
 }
 
 const matches = (pathname: string, prefixes: readonly string[]): boolean =>
-  prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  prefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
 
 /**
  * An unmatched API call must 404 without consulting the asset layer at all —

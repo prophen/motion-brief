@@ -24,7 +24,11 @@ function Avatar({ className, ...props }: AvatarPrimitive.Root.Props) {
   )
 }
 
-function AvatarImage({ className, alt = '', ...props }: AvatarPrimitive.Image.Props) {
+function AvatarImage({
+  className,
+  alt = '',
+  ...props
+}: AvatarPrimitive.Image.Props) {
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
@@ -35,7 +39,10 @@ function AvatarImage({ className, alt = '', ...props }: AvatarPrimitive.Image.Pr
   )
 }
 
-function AvatarFallback({ className, ...props }: AvatarPrimitive.Fallback.Props) {
+function AvatarFallback({
+  className,
+  ...props
+}: AvatarPrimitive.Fallback.Props) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"

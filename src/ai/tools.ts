@@ -13,7 +13,10 @@ import { z } from 'zod/v4'
 import { BUILT_IN_TOOLS, applyAiToolDefaults } from 'deepspace/worker'
 import type { ToolSchema, CollectionSchema } from 'deepspace/worker'
 
-type ToolExecutor = (toolName: string, params: Record<string, unknown>) => Promise<unknown>
+type ToolExecutor = (
+  toolName: string,
+  params: Record<string, unknown>,
+) => Promise<unknown>
 
 const ALLOWED_TOOL_NAMES = [
   'schema.list',
@@ -43,11 +46,17 @@ function interpretationLabel(interpretation: Interpretation): string {
   return typeof kind === 'string' ? kind : 'object'
 }
 
-export function buildSystemPrompt(appName: string, schemas: CollectionSchema[]): string {
+export function buildSystemPrompt(
+  appName: string,
+  schemas: CollectionSchema[],
+): string {
   const schemaSummary = schemas
     .map((s) => {
       const cols = (s.columns ?? [])
-        .map((c) => `${c.name}:${interpretationLabel(c.interpretation)}${c.required ? '!' : ''}`)
+        .map(
+          (c) =>
+            `${c.name}:${interpretationLabel(c.interpretation)}${c.required ? '!' : ''}`,
+        )
         .join(', ')
       return `- ${s.name}${cols ? ` (${cols})` : ''}`
     })

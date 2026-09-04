@@ -8,7 +8,11 @@
  */
 
 import type { Context, Hono } from 'hono'
-import { authenticatedRoomRequest, resolveAppRole, verifyJwt } from 'deepspace/worker'
+import {
+  authenticatedRoomRequest,
+  resolveAppRole,
+  verifyJwt,
+} from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import type { AppContext, Env } from '../../worker.js'
 
@@ -18,10 +22,14 @@ function jwtConfig(env: Env): JwtVerifierConfig {
 
 function wsRoute(
   doNamespace: (env: Env) => DurableObjectNamespace,
-  extraIdentity?: (auth: VerifyResult, env: Env) => { role?: string } | Promise<{ role?: string }>,
+  extraIdentity?: (
+    auth: VerifyResult,
+    env: Env,
+  ) => { role?: string } | Promise<{ role?: string }>,
 ) {
   return async (c: Context<AppContext>) => {
-    const id = c.req.param('roomId') ?? c.req.param('docId') ?? c.req.param('scopeId')
+    const id =
+      c.req.param('roomId') ?? c.req.param('docId') ?? c.req.param('scopeId')
     if (!id) return new Response('Not found', { status: 404 })
     const url = new URL(c.req.url)
     const token = url.searchParams.get('token')
@@ -60,14 +68,21 @@ function parseAccessList(raw: string | undefined): string[] {
   if (!raw) return []
   try {
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string')
+      : []
   } catch {
     return []
   }
 }
 
-async function getDocumentForAccess(env: Env, docId: string): Promise<DocumentAccessLookup> {
-  const stub = env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`))
+async function getDocumentForAccess(
+  env: Env,
+  docId: string,
+): Promise<DocumentAccessLookup> {
+  const stub = env.RECORD_ROOMS.get(
+    env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`),
+  )
   try {
     const res = await stub.fetch(
       new Request('https://internal/api/tools/execute', {
@@ -91,7 +106,9 @@ async function getDocumentForAccess(env: Env, docId: string): Promise<DocumentAc
     if (json.success && json.data?.record?.data) {
       return { kind: 'found', doc: json.data.record.data }
     }
-    if (json.error?.startsWith('Schema not registered for collection: documents')) {
+    if (
+      json.error?.startsWith('Schema not registered for collection: documents')
+    ) {
       return { kind: 'not-docs-room' }
     }
     return { kind: 'error' }
@@ -130,7 +147,9 @@ export function registerRealtimeRoutes(app: Hono<AppContext>): void {
     const docId = c.req.param('docId')
     const url = new URL(c.req.url)
     const token = url.searchParams.get('token')
-    const auth = token ? (await verifyJwt(jwtConfig(c.env), token)).result : null
+    const auth = token
+      ? (await verifyJwt(jwtConfig(c.env), token)).result
+      : null
     if (!auth) return new Response('Unauthorized', { status: 401 })
 
     const role = await resolveDocsYjsRole(c.env, docId, auth.userId)

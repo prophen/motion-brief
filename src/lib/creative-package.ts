@@ -11,7 +11,9 @@ export type CreativePackageInput = {
   audioUrl?: string
 }
 
-export function buildCreativePackageMarkdown(input: CreativePackageInput): string {
+export function buildCreativePackageMarkdown(
+  input: CreativePackageInput,
+): string {
   const sections = [
     `# ${input.title.trim() || 'Untitled creative brief'}`,
     `## Creator prompt\n${input.prompt.trim()}`,
@@ -28,8 +30,10 @@ export function buildCreativePackageMarkdown(input: CreativePackageInput): strin
       '## Shareable generated assets',
       '> Anyone with these media links can view or download them. The editable MotionBrief project remains private to its owner.',
     ]
-    if (input.imageUrl) assets.push(`![Generated campaign visual](${input.imageUrl})`)
-    if (input.audioUrl) assets.push(`[Listen to or download the narration](${input.audioUrl})`)
+    if (input.imageUrl)
+      assets.push(`![Generated campaign visual](${input.imageUrl})`)
+    if (input.audioUrl)
+      assets.push(`[Listen to or download the narration](${input.audioUrl})`)
     sections.push(assets.join('\n\n'))
   }
   sections.push('---\nCreated with MotionBrief')
@@ -37,6 +41,10 @@ export function buildCreativePackageMarkdown(input: CreativePackageInput): strin
 }
 
 export function safePackageFilename(title: string): string {
-  const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const slug = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
   return `${slug || 'motionbrief'}-creative-package.md`
 }

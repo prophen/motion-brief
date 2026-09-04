@@ -27,32 +27,43 @@ export interface DecodedReactError {
  * Friendly text for the React errors apps actually hit. Kept deliberately
  * small — any other code still decodes to a generic, linkable result.
  */
-const REACT_ERROR_TABLE: Record<number, Omit<DecodedReactError, 'code' | 'docsUrl'>> = {
+const REACT_ERROR_TABLE: Record<
+  number,
+  Omit<DecodedReactError, 'code' | 'docsUrl'>
+> = {
   300: {
     title: 'A component changed how many hooks it runs',
-    explanation: 'This component called fewer hooks than it did on its previous render.',
+    explanation:
+      'This component called fewer hooks than it did on its previous render.',
     hint: 'Almost always an early return placed above a hook. Move every hook (useState, useEffect, useQuery, …) above any conditional return so the same hooks run in the same order on every render.',
   },
   310: {
     title: 'A component changed how many hooks it runs',
-    explanation: 'This component called more hooks than it did on its previous render.',
+    explanation:
+      'This component called more hooks than it did on its previous render.',
     hint: 'Almost always an early return placed above a hook. Move every hook (useState, useEffect, useQuery, …) above any conditional return so the same hooks run in the same order on every render.',
   },
   301: {
     title: 'Too many re-renders',
-    explanation: 'React hit its render limit because the component updated state while rendering, which triggers an infinite render loop.',
+    explanation:
+      'React hit its render limit because the component updated state while rendering, which triggers an infinite render loop.',
     hint: 'Don’t call setState (or a mutation) directly in the render body. Move it into an event handler or an effect with the right dependencies.',
   },
   321: {
     title: 'A hook was called in an invalid place',
-    explanation: 'Hooks can only be called at the top level of a function component or another hook.',
+    explanation:
+      'Hooks can only be called at the top level of a function component or another hook.',
     hint: 'Move the hook out of any condition, loop, callback, or plain (non-component) function. This can also mean two copies of React are installed.',
   },
 }
 
 /** Pull a React error code out of a message, whether minified, URL, or legacy form. */
 function extractReactErrorCode(message: string): number | null {
-  const patterns = [/react\.dev\/errors\/(\d+)/, /invariant=(\d+)/, /Minified React error #(\d+)/]
+  const patterns = [
+    /react\.dev\/errors\/(\d+)/,
+    /invariant=(\d+)/,
+    /Minified React error #(\d+)/,
+  ]
   for (const re of patterns) {
     const match = message.match(re)
     if (match) return Number(match[1])
@@ -82,7 +93,8 @@ export function decodeReactError(error: unknown): DecodedReactError | null {
     code,
     docsUrl: `https://react.dev/errors/${code}`,
     title: known?.title ?? `React error #${code}`,
-    explanation: known?.explanation ?? 'React stopped rendering because of an error.',
+    explanation:
+      known?.explanation ?? 'React stopped rendering because of an error.',
     hint:
       known?.hint ??
       'Run the app in development (npm run dev) to see the full, unminified message and the component that failed.',
@@ -98,7 +110,12 @@ export interface ErrorScreenProps {
 
 export function ErrorScreen({ error, onReset }: ErrorScreenProps) {
   const decoded = decodeReactError(error)
-  const rawMessage = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+  const rawMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : ''
   const stack = error instanceof Error ? error.stack : undefined
   const reset = onReset ?? (() => window.location.reload())
 
@@ -118,7 +135,9 @@ export function ErrorScreen({ error, onReset }: ErrorScreenProps) {
           {decoded?.title ?? 'Something went wrong'}
         </h1>
         {decoded?.explanation && (
-          <p className="mt-1.5 text-sm text-muted-foreground">{decoded.explanation}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {decoded.explanation}
+          </p>
         )}
 
         {decoded?.hint && (
@@ -136,7 +155,9 @@ export function ErrorScreen({ error, onReset }: ErrorScreenProps) {
 
         {stack && (
           <details className="mt-2 text-left">
-            <summary className="cursor-pointer text-xs text-muted-foreground">Show stack trace</summary>
+            <summary className="cursor-pointer text-xs text-muted-foreground">
+              Show stack trace
+            </summary>
             <pre className="mt-1 max-h-60 overflow-auto rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               {stack}
             </pre>

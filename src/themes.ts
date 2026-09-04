@@ -25,12 +25,14 @@ export const THEMES = [
   {
     id: 'slate',
     label: 'Slate',
-    description: 'Neutral dark placeholder default. Replace with your own theme.',
+    description:
+      'Neutral dark placeholder default. Replace with your own theme.',
   },
   {
     id: 'paper',
     label: 'Paper',
-    description: 'Light example theme showing the token contract. Replace or delete.',
+    description:
+      'Light example theme showing the token contract. Replace or delete.',
   },
 ] as const
 
@@ -39,7 +41,9 @@ export type ThemeId = (typeof THEMES)[number]['id']
 /** Read the currently active theme id from <html data-theme>. */
 export function getActiveTheme(): ThemeId {
   if (typeof document === 'undefined') return 'motion-studio'
-  const id = document.documentElement.getAttribute('data-theme') as ThemeId | null
+  const id = document.documentElement.getAttribute(
+    'data-theme',
+  ) as ThemeId | null
   return id ?? 'motion-studio'
 }
 

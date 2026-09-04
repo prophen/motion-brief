@@ -11,8 +11,17 @@ import { cn } from '@/lib/utils'
  * provider would shadow the app-level one (making its `delay` a dead knob)
  * and put every tooltip in its own single-member delay group.
  */
-function TooltipProvider({ delay = 200, ...props }: TooltipPrimitive.Provider.Props) {
-  return <TooltipPrimitive.Provider data-slot="tooltip-provider" delay={delay} {...props} />
+function TooltipProvider({
+  delay = 200,
+  ...props
+}: TooltipPrimitive.Provider.Props) {
+  return (
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delay={delay}
+      {...props}
+    />
+  )
 }
 
 function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
@@ -35,7 +44,12 @@ function TooltipContent({
 }) {
   return (
     <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Positioner side={side} align={align} sideOffset={sideOffset} className="z-50">
+      <TooltipPrimitive.Positioner
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        className="z-50"
+      >
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"
           className={cn(

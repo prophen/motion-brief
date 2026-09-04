@@ -29,7 +29,9 @@ import {
 } from './ui'
 
 export default function Navigation() {
-  const { isLoaded, isSignedIn, user, userLoading } = useAuthProfileReady({ requireUser: true })
+  const { isLoaded, isSignedIn, user, userLoading } = useAuthProfileReady({
+    requireUser: true,
+  })
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -59,7 +61,9 @@ export default function Navigation() {
         aria-current={active ? 'page' : undefined}
         className={cn(
           'px-3 py-1.5 text-sm',
-          active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+          active
+            ? 'text-foreground'
+            : 'text-muted-foreground hover:text-foreground',
         )}
       >
         {item.label}
@@ -69,13 +73,21 @@ export default function Navigation() {
 
   return (
     <>
-      <nav data-testid="app-navigation" className="border-b border-border bg-background">
+      <nav
+        data-testid="app-navigation"
+        className="border-b border-border bg-background"
+      >
         <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4">
-          <Link to="/" className="inline-flex min-h-6 items-center text-sm font-semibold text-foreground">
+          <Link
+            to="/"
+            className="inline-flex min-h-6 items-center text-sm font-semibold text-foreground"
+          >
             {APP_NAME}
           </Link>
 
-          <div className="hidden items-center md:flex">{visibleNav.map(navLink)}</div>
+          <div className="hidden items-center md:flex">
+            {visibleNav.map(navLink)}
+          </div>
 
           <div className="flex-1" />
 
@@ -95,9 +107,16 @@ export default function Navigation() {
                     className="group flex items-center gap-2 rounded-full border border-border bg-card/60 py-1 pl-1 pr-2.5 text-sm transition-colors hover:bg-card"
                   >
                     <Avatar className="h-6 w-6 ring-1 ring-inset ring-border">
-                      <AvatarImage src={user.imageUrl ?? undefined} referrerPolicy="no-referrer" />
+                      <AvatarImage
+                        src={user.imageUrl ?? undefined}
+                        referrerPolicy="no-referrer"
+                      />
                       <AvatarFallback className="text-[11px]">
-                        {(user.name?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                        {(
+                          user.name?.[0] ??
+                          user.email?.[0] ??
+                          '?'
+                        ).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <span
@@ -148,7 +167,11 @@ export default function Navigation() {
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
           >
-            {mobileMenuOpen ? <X className="h-4 w-4" aria-hidden /> : <Menu className="h-4 w-4" aria-hidden />}
+            {mobileMenuOpen ? (
+              <X className="h-4 w-4" aria-hidden />
+            ) : (
+              <Menu className="h-4 w-4" aria-hidden />
+            )}
           </button>
         </div>
 

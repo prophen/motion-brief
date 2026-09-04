@@ -1,5 +1,5 @@
-@import "tailwindcss" source(none);
-@import "./themes.css";
+@import 'tailwindcss' source(none);
+@import './themes.css';
 
 /* Scan local source + SDK components for Tailwind class usage */
 @source "./**/*.{ts,tsx}";
@@ -102,11 +102,37 @@
  * These replace the tailwindcss-animate plugin which is not compatible with Tailwind v4.
  */
 @keyframes animate-in {
-  from { opacity: var(--tw-enter-opacity, 1); transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0)); }
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(
+        var(--tw-enter-translate-x, 0),
+        var(--tw-enter-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1)
+      )
+      rotate(var(--tw-enter-rotate, 0));
+  }
 }
 
 @keyframes animate-out {
-  to { opacity: var(--tw-exit-opacity, 1); transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0)); }
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(
+        var(--tw-exit-translate-x, 0),
+        var(--tw-exit-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1)
+      )
+      rotate(var(--tw-exit-rotate, 0));
+  }
 }
 
 @utility animate-in {
@@ -133,19 +159,42 @@
   --tw-exit-rotate: initial;
 }
 
-@utility fade-in-0 { --tw-enter-opacity: 0; }
-@utility fade-out-0 { --tw-exit-opacity: 0; }
-@utility zoom-in-95 { --tw-enter-scale: .95; }
-@utility zoom-out-95 { --tw-exit-scale: .95; }
-@utility slide-in-from-top-2 { --tw-enter-translate-y: -0.5rem; }
-@utility slide-in-from-bottom-2 { --tw-enter-translate-y: 0.5rem; }
-@utility slide-in-from-left-2 { --tw-enter-translate-x: -0.5rem; }
-@utility slide-in-from-right-2 { --tw-enter-translate-x: 0.5rem; }
-@utility slide-out-to-top-2 { --tw-exit-translate-y: -0.5rem; }
-@utility slide-out-to-bottom-2 { --tw-exit-translate-y: 0.5rem; }
-@utility slide-out-to-left-2 { --tw-exit-translate-x: -0.5rem; }
-@utility slide-out-to-right-2 { --tw-exit-translate-x: 0.5rem; }
-
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.95;
+}
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+@utility slide-out-to-top-2 {
+  --tw-exit-translate-y: -0.5rem;
+}
+@utility slide-out-to-bottom-2 {
+  --tw-exit-translate-y: 0.5rem;
+}
+@utility slide-out-to-left-2 {
+  --tw-exit-translate-x: -0.5rem;
+}
+@utility slide-out-to-right-2 {
+  --tw-exit-translate-x: 0.5rem;
+}
 
 /*
  * Custom base styles — must be in @layer base so utility classes can override.
@@ -157,14 +206,22 @@
     color-scheme: dark;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     min-height: 100vh;
     background-color: var(--color-background);
     scroll-behavior: smooth;
   }
 
   body {
-    font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family:
+      'SF Pro Text',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -228,7 +285,12 @@
    */
 
   /* Prevent 300ms tap delay on mobile */
-  a, button, [role="button"], input, select, textarea {
+  a,
+  button,
+  [role='button'],
+  input,
+  select,
+  textarea {
     touch-action: manipulation;
   }
 }

@@ -26,7 +26,10 @@ const SelectGroup = SelectPrimitive.Group
  * cleared/no-selection state (Base UI reports `null`; this wrapper coerces
  * it to `''`), so an `<SelectItem value="">` would render as the placeholder.
  */
-function collectItems(node: React.ReactNode, acc: Record<string, React.ReactNode>): Record<string, React.ReactNode> {
+function collectItems(
+  node: React.ReactNode,
+  acc: Record<string, React.ReactNode>,
+): Record<string, React.ReactNode> {
   React.Children.forEach(node, (child) => {
     if (!React.isValidElement(child)) return
     const props = child.props as { value?: string; children?: React.ReactNode }
@@ -51,12 +54,18 @@ function Select({
   children,
   items,
   ...props
-}: Omit<SelectPrimitive.Root.Props<string, false>, 'value' | 'defaultValue' | 'onValueChange' | 'multiple'> & {
+}: Omit<
+  SelectPrimitive.Root.Props<string, false>,
+  'value' | 'defaultValue' | 'onValueChange' | 'multiple'
+> & {
   value?: string
   defaultValue?: string
   onValueChange?: (value: string) => void
 }) {
-  const derivedItems = React.useMemo(() => items ?? collectItems(children, {}), [items, children])
+  const derivedItems = React.useMemo(
+    () => items ?? collectItems(children, {}),
+    [items, children],
+  )
   return (
     <SelectPrimitive.Root
       value={value}
@@ -84,7 +93,10 @@ function SelectValue({
              so styling a SelectValue applies in both states. (Base UI-typed
              rest props can't spread onto a plain span — className is the
              styling contract here.) */
-          <span data-slot="select-value" className={cn('text-muted-foreground', className)}>
+          <span
+            data-slot="select-value"
+            className={cn('text-muted-foreground', className)}
+          >
             {placeholder}
           </span>
         ) : (
@@ -110,7 +122,9 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon render={<ChevronDownIcon className="size-4 shrink-0 opacity-50" />} />
+      <SelectPrimitive.Icon
+        render={<ChevronDownIcon className="size-4 shrink-0 opacity-50" />}
+      />
     </SelectPrimitive.Trigger>
   )
 }
@@ -159,13 +173,20 @@ function SelectLabel({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="select-label"
-      className={cn('text-muted-foreground px-2 py-1.5 text-xs font-semibold', className)}
+      className={cn(
+        'text-muted-foreground px-2 py-1.5 text-xs font-semibold',
+        className,
+      )}
       {...props}
     />
   )
 }
 
-function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props) {
+function SelectItem({
+  className,
+  children,
+  ...props
+}: SelectPrimitive.Item.Props) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -185,7 +206,10 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
   )
 }
 
-function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props) {
+function SelectSeparator({
+  className,
+  ...props
+}: SelectPrimitive.Separator.Props) {
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"

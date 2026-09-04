@@ -36,7 +36,10 @@ import type { AppContext, Env } from '../../worker.js'
 
 type ResolveAuth = (req: Request, env: Env) => Promise<VerifyResult | null>
 
-export function registerActionRoutes(app: Hono<AppContext>, resolveAuth: ResolveAuth): void {
+export function registerActionRoutes(
+  app: Hono<AppContext>,
+  resolveAuth: ResolveAuth,
+): void {
   app.post('/api/actions/:name', async (c) => {
     const auth = await resolveAuth(c.req.raw, c.env)
     if (!auth) return c.json({ error: 'Unauthorized' }, 401)
@@ -46,24 +49,40 @@ export function registerActionRoutes(app: Hono<AppContext>, resolveAuth: Resolve
     // without one is refused as an auth failure, next to the check above,
     // rather than crashing on a missing header further down.
     const authHeader = c.req.header('Authorization') ?? ''
-    const callerJwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+    const callerJwt = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : ''
     if (!callerJwt) return c.json({ error: 'Unauthorized' }, 401)
     // Who called: actions run RBAC-off and can bill the owner, and the
     // platform's request log carries no user — this line is the attribution.
     // The name is a decoded path segment, so it is quoted, never interpolated raw.
-    console.info(`[action] ${JSON.stringify(c.req.param('name'))} caller=${auth.userId}`)
+    console.info(
+      `[action] ${JSON.stringify(c.req.param('name'))} caller=${auth.userId}`,
+    )
     const name = c.req.param('name')
     const action = actions[name]
     if (!action) return c.json({ error: 'Action not found' }, 404)
     const params = await c.req.json<Record<string, unknown>>()
     const tools = createActionTools(c.env, auth.userId, callerJwt)
-    const result = await action({ userId: auth.userId, params, tools, env: c.env, callerJwt })
+    const result = await action({
+      userId: auth.userId,
+      params,
+      tools,
+      env: c.env,
+      callerJwt,
+    })
     return c.json(result as unknown as Record<string, unknown>)
   })
 }
 
-function createActionTools(env: Env, userId: string, callerJwt: string): ActionTools {
-  const stub = env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`))
+function createActionTools(
+  env: Env,
+  userId: string,
+  callerJwt: string,
+): ActionTools {
+  const stub = env.RECORD_ROOMS.get(
+    env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`),
+  )
 
   // The DO returns ActionResult<unknown>; callers below supply the precise
   // operation result type fixed by the SDK tools-api wire contract.
@@ -85,7 +104,10 @@ function createActionTools(env: Env, userId: string, callerJwt: string): ActionT
     return res.json() as Promise<ActionResult<TData>>
   }
 
-  async function callIntegration<T>(endpoint: string, data?: unknown): Promise<ActionResult<T>> {
+  async function callIntegration<T>(
+    endpoint: string,
+    data?: unknown,
+  ): Promise<ActionResult<T>> {
     const integrationName = endpoint.split('/')[0]
     const billingMode = integrations[integrationName]?.billing ?? 'developer'
 
@@ -109,11 +131,14 @@ function createActionTools(env: Env, userId: string, callerJwt: string): ActionT
       execTool('records.create', { collection, data, recordId }),
     update: (collection, recordId, data) =>
       execTool('records.update', { collection, recordId, data }),
-    remove: (collection, recordId) => execTool('records.delete', { collection, recordId }),
+    remove: (collection, recordId) =>
+      execTool('records.delete', { collection, recordId }),
     deleteWhere: (collection, where, limit) =>
       execTool('records.deleteWhere', { collection, where, limit }),
-    get: (collection, recordId) => execTool('records.get', { collection, recordId }),
-    query: (collection, options) => execTool('records.query', { collection, ...options }),
+    get: (collection, recordId) =>
+      execTool('records.get', { collection, recordId }),
+    query: (collection, options) =>
+      execTool('records.query', { collection, ...options }),
     integration: callIntegration,
     registerUser: (options) => execTool('users.register', { ...options }),
   }

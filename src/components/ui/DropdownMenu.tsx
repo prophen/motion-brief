@@ -55,7 +55,10 @@ function DropdownMenuItem({
   inset,
   variant = 'default',
   ...props
-}: MenuPrimitive.Item.Props & { inset?: boolean; variant?: 'default' | 'destructive' }) {
+}: MenuPrimitive.Item.Props & {
+  inset?: boolean
+  variant?: 'default' | 'destructive'
+}) {
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
@@ -94,7 +97,11 @@ function DropdownMenuCheckboxItem({
   )
 }
 
-function DropdownMenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioItem.Props) {
+function DropdownMenuRadioItem({
+  className,
+  children,
+  ...props
+}: MenuPrimitive.RadioItem.Props) {
   return (
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
@@ -125,13 +132,19 @@ function DropdownMenuLabel({
     <div
       data-slot="dropdown-menu-label"
       data-inset={inset ? '' : undefined}
-      className={cn('px-2 py-1.5 text-sm font-medium data-[inset]:pl-8', className)}
+      className={cn(
+        'px-2 py-1.5 text-sm font-medium data-[inset]:pl-8',
+        className,
+      )}
       {...props}
     />
   )
 }
 
-function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
+function DropdownMenuSeparator({
+  className,
+  ...props
+}: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
@@ -141,11 +154,17 @@ function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.
   )
 }
 
-function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<'span'>) {
+function DropdownMenuShortcut({
+  className,
+  ...props
+}: React.ComponentProps<'span'>) {
   return (
     <span
       data-slot="dropdown-menu-shortcut"
-      className={cn('text-muted-foreground ml-auto text-xs tracking-widest', className)}
+      className={cn(
+        'text-muted-foreground ml-auto text-xs tracking-widest',
+        className,
+      )}
       {...props}
     />
   )
@@ -180,7 +199,12 @@ function DropdownMenuSubContent({
 }: MenuPrimitive.Popup.Props & { sideOffset?: number }) {
   return (
     <MenuPrimitive.Portal>
-      <MenuPrimitive.Positioner side="right" align="start" sideOffset={sideOffset} className="z-50">
+      <MenuPrimitive.Positioner
+        side="right"
+        align="start"
+        sideOffset={sideOffset}
+        className="z-50"
+      >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-sub-content"
           className={cn(

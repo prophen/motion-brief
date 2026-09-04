@@ -16,7 +16,10 @@ import { cn } from '@/lib/utils'
 // Modal - Accessible modal dialog (wraps the Base UI Dialog primitives in ./Dialog)
 // ============================================================================
 
-interface ModalProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
+interface ModalProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'children'
+> {
   open: boolean
   onClose: () => void
   children: ReactNode
@@ -43,7 +46,12 @@ export function Modal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose()
+      }}
+    >
       <DialogContent
         aria-describedby={undefined}
         className={cn(sizes[size], 'flex flex-col max-h-[85vh]', className)}
@@ -64,12 +72,11 @@ interface ModalHeaderProps {
   className?: string
 }
 
-function ModalHeader({ children, className = '' }: ModalHeaderProps): JSX.Element {
-  return (
-    <DHeader className={className}>
-      {children}
-    </DHeader>
-  )
+function ModalHeader({
+  children,
+  className = '',
+}: ModalHeaderProps): JSX.Element {
+  return <DHeader className={className}>{children}</DHeader>
 }
 
 // ============================================================================
@@ -81,13 +88,14 @@ interface ModalTitleProps {
   className?: string
 }
 
-function ModalTitle({ children, className = '' }: ModalTitleProps): JSX.Element {
+function ModalTitle({
+  children,
+  className = '',
+}: ModalTitleProps): JSX.Element {
   // min-w-0 + truncate: long unbroken strings (filenames, URLs) ellipsize
   // instead of stretching the dialog.
   return (
-    <DTitle className={cn('min-w-0 truncate', className)}>
-      {children}
-    </DTitle>
+    <DTitle className={cn('min-w-0 truncate', className)}>{children}</DTitle>
   )
 }
 
@@ -100,12 +108,11 @@ interface ModalDescriptionProps {
   className?: string
 }
 
-function ModalDescription({ children, className = '' }: ModalDescriptionProps): JSX.Element {
-  return (
-    <DDescription className={className}>
-      {children}
-    </DDescription>
-  )
+function ModalDescription({
+  children,
+  className = '',
+}: ModalDescriptionProps): JSX.Element {
+  return <DDescription className={className}>{children}</DDescription>
 }
 
 // ============================================================================
@@ -124,7 +131,12 @@ function ModalBody({ children, className = '' }: ModalBodyProps): JSX.Element {
   // align with Header / Footer. break-words keeps long unbroken strings
   // (filenames, URLs) from forcing horizontal overflow.
   return (
-    <div className={cn('flex-1 overflow-y-auto -mx-1 px-1 py-4 break-words', className)}>
+    <div
+      className={cn(
+        'flex-1 overflow-y-auto -mx-1 px-1 py-4 break-words',
+        className,
+      )}
+    >
       {children}
     </div>
   )
@@ -139,12 +151,11 @@ interface ModalFooterProps {
   className?: string
 }
 
-function ModalFooter({ children, className = '' }: ModalFooterProps): JSX.Element {
-  return (
-    <DFooter className={className}>
-      {children}
-    </DFooter>
-  )
+function ModalFooter({
+  children,
+  className = '',
+}: ModalFooterProps): JSX.Element {
+  return <DFooter className={className}>{children}</DFooter>
 }
 
 // ============================================================================

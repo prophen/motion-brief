@@ -1,7 +1,14 @@
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
-type Variant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info'
+type Variant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'success'
+  | 'warning'
+  | 'info'
 type Size = 'default' | 'sm' | 'lg'
 
 const VARIANTS: Record<Variant, string> = {
@@ -25,7 +32,12 @@ export interface BadgeProps extends ComponentProps<'span'> {
   size?: Size
 }
 
-export function Badge({ className, variant = 'default', size = 'default', ...props }: BadgeProps) {
+export function Badge({
+  className,
+  variant = 'default',
+  size = 'default',
+  ...props
+}: BadgeProps) {
   return (
     <span
       className={cn(

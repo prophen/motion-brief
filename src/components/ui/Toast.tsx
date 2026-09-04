@@ -55,7 +55,15 @@ interface ToastContextValue {
 
 function CheckCircleIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
       <polyline points="22 4 12 14.01 9 11.01" />
     </svg>
@@ -64,7 +72,15 @@ function CheckCircleIcon({ className }: { className?: string }) {
 
 function AlertCircleIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -74,7 +90,15 @@ function AlertCircleIcon({ className }: { className?: string }) {
 
 function AlertTriangleIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -84,7 +108,15 @@ function AlertTriangleIcon({ className }: { className?: string }) {
 
 function InfoIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -94,7 +126,15 @@ function InfoIcon({ className }: { className?: string }) {
 
 function CloseIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
@@ -197,7 +237,16 @@ export function ToastProvider({
 
   return (
     <ToastContext.Provider
-      value={{ toasts, toast, success, error, warning, info, dismiss, dismissAll }}
+      value={{
+        toasts,
+        toast,
+        success,
+        error,
+        warning,
+        info,
+        dismiss,
+        dismissAll,
+      }}
     >
       {children}
 
@@ -227,10 +276,22 @@ export function ToastProvider({
  * the icon. Cleaner read; doesn't compete with the page underneath.
  */
 const TOAST_CONFIG = {
-  success: { Icon: CheckCircleIcon, accent: 'bg-success', icon: 'text-success' },
-  error:   { Icon: AlertCircleIcon, accent: 'bg-destructive', icon: 'text-destructive' },
-  warning: { Icon: AlertTriangleIcon, accent: 'bg-warning', icon: 'text-warning' },
-  info:    { Icon: InfoIcon, accent: 'bg-info', icon: 'text-info' },
+  success: {
+    Icon: CheckCircleIcon,
+    accent: 'bg-success',
+    icon: 'text-success',
+  },
+  error: {
+    Icon: AlertCircleIcon,
+    accent: 'bg-destructive',
+    icon: 'text-destructive',
+  },
+  warning: {
+    Icon: AlertTriangleIcon,
+    accent: 'bg-warning',
+    icon: 'text-warning',
+  },
+  info: { Icon: InfoIcon, accent: 'bg-info', icon: 'text-info' },
 } as const
 
 interface ToastItemProps {
@@ -257,15 +318,19 @@ function ToastItem({ toast, onDismiss }: ToastItemProps): React.ReactElement {
         relative flex items-start gap-2.5 min-w-[260px] max-w-[360px]
         overflow-hidden rounded-lg border border-border bg-popover
         text-popover-foreground pl-3.5 pr-2 py-2.5 shadow-lg
-        ${exiting
-          ? 'animate-out fade-out-0 slide-out-to-right-2 duration-150'
-          : 'animate-in fade-in-0 slide-in-from-right-2 duration-200'
+        ${
+          exiting
+            ? 'animate-out fade-out-0 slide-out-to-right-2 duration-150'
+            : 'animate-in fade-in-0 slide-in-from-right-2 duration-200'
         }
       `}
       role="alert"
     >
       {/* Colored left-edge accent — the only chrome that reflects the type. */}
-      <span className={`absolute inset-y-0 left-0 w-[3px] ${accent}`} aria-hidden />
+      <span
+        className={`absolute inset-y-0 left-0 w-[3px] ${accent}`}
+        aria-hidden
+      />
       <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${icon}`} />
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium leading-tight">{toast.title}</p>

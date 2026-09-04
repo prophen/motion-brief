@@ -10,6 +10,8 @@ export function countWords(value: string): number {
 /** Manual briefs may intentionally use no narration; spoken briefs need 8–13 words. */
 export function narrationFitsFiveSeconds(value: string): boolean {
   const words = countWords(value)
-  return words === 0 || (words >= NARRATION_TARGET_MIN_WORDS && words <= NARRATION_HARD_MAX_WORDS)
+  return (
+    words === 0 ||
+    (words >= NARRATION_TARGET_MIN_WORDS && words <= NARRATION_HARD_MAX_WORDS)
+  )
 }
-

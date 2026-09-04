@@ -9,4 +9,6 @@ import './styles.css'
 const router = createBrowserRouter(routes)
 installStaleChunkRecovery(router)
 
-createRoot(document.getElementById('root')!).render(<RouterProvider router={router} />)
+createRoot(document.getElementById('root')!).render(
+  <RouterProvider router={router} />,
+)

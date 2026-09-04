@@ -23,7 +23,17 @@ export default [
   // otherwise hard-fail the lint with "Parsing error: Invalid character".
   // `.deepspace/**` holds Playwright artifacts (test-results, playwright-report)
   // that the test runner rotates while a lint may be scanning them.
-  { ignores: ['dist/**', 'node_modules/**', '.wrangler/**', '.vite/**', '.deepspace/**', 'src/router.ts', '**/._*'] },
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      '.wrangler/**',
+      '.vite/**',
+      '.deepspace/**',
+      'src/router.ts',
+      '**/._*',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {

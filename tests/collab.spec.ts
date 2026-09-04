@@ -47,22 +47,31 @@ test('each browser renders its own signed-in account', async ({ users }) => {
   // The two accounts are distinct, so two exact matches is also the proof that
   // the contexts are not sharing one session.
   for (const user of [a, b]) {
-    await expect(user.page.getByTestId('app-navigation')).toBeVisible({ timeout: 15_000 })
+    await expect(user.page.getByTestId('app-navigation')).toBeVisible({
+      timeout: 15_000,
+    })
 
     // The identity chip shows `name || email`. Its text is not predictable, but
     // its presence is: something must be there once the profile has loaded.
     // (It is `hidden sm:inline` in some templates, so assert text, not
     // visibility.)
-    await expect(user.page.getByTestId('nav-user-name')).toHaveText(/\S/, { timeout: 15_000 })
-
-    await user.page.getByRole('button', { name: 'Account menu' }).click()
-    await expect(user.page.getByTestId('nav-user-email')).toHaveText(user.email, {
+    await expect(user.page.getByTestId('nav-user-name')).toHaveText(/\S/, {
       timeout: 15_000,
     })
+
+    await user.page.getByRole('button', { name: 'Account menu' }).click()
+    await expect(user.page.getByTestId('nav-user-email')).toHaveText(
+      user.email,
+      {
+        timeout: 15_000,
+      },
+    )
   }
 })
 
-test('API status page renders loading success and error states', async ({ users }) => {
+test('API status page renders loading success and error states', async ({
+  users,
+}) => {
   const [user] = await users(1)
   let shouldFail = false
   let requestCount = 0
@@ -82,19 +91,26 @@ test('API status page renders loading success and error states', async ({ users 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: { integrations: { openai: {}, wikipedia: {} } } }),
+      body: JSON.stringify({
+        success: true,
+        data: { integrations: { openai: {}, wikipedia: {} } },
+      }),
     })
   })
 
   await user.page.goto('/api-status')
-  await expect(user.page.getByText('Loading integration catalog...')).toBeVisible()
+  await expect(
+    user.page.getByText('Loading integration catalog...'),
+  ).toBeVisible()
   await expect(user.page.getByText('Integration catalog ready')).toBeVisible()
   await expect(user.page.getByText('2 integrations available.')).toBeVisible()
 
   shouldFail = true
   await user.page.getByRole('button', { name: 'Refresh' }).click()
   await expect(user.page.getByText('Catalog unavailable')).toBeVisible()
-  await expect(user.page.getByText('Showing the last loaded catalog')).toBeVisible()
+  await expect(
+    user.page.getByText('Showing the last loaded catalog'),
+  ).toBeVisible()
   await expect(user.page.getByText('Integration catalog ready')).toBeVisible()
 
   const urlAfterFailure = user.page.url()
@@ -104,7 +120,9 @@ test('API status page renders loading success and error states', async ({ users 
   expect(user.page.url()).toBe(urlAfterFailure)
 })
 
-test('API status page shows local retry after first-load API failure', async ({ users }) => {
+test('API status page shows local retry after first-load API failure', async ({
+  users,
+}) => {
   const [user] = await users(1)
   let requestCount = 0
 
@@ -118,9 +136,13 @@ test('API status page shows local retry after first-load API failure', async ({ 
   })
 
   await user.page.goto('/api-status')
-  await expect(user.page.getByText('Loading integration catalog...')).toBeVisible()
+  await expect(
+    user.page.getByText('Loading integration catalog...'),
+  ).toBeVisible()
   await expect(user.page.getByText('Could not load API data')).toBeVisible()
-  await expect(user.page.getByText('Retried 1 time automatically.')).toBeVisible()
+  await expect(
+    user.page.getByText('Retried 1 time automatically.'),
+  ).toBeVisible()
 
   const retryButton = user.page.getByRole('button', { name: 'Retry' })
   await expect(retryButton).toBeVisible()

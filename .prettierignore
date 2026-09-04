@@ -1,0 +1,10 @@
+node_modules
+.agents
+dist
+.wrangler
+.deepspace
+.worker-bundle.js
+test-results
+playwright-report
+src/router.ts
+src/modals.tsx

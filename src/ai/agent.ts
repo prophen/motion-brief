@@ -39,7 +39,10 @@ export interface RegisterAgentOptions {
   authorize?: (context: AgentAuthorizationContext) => boolean | Promise<boolean>
 }
 
-function createAccessResolver(options: RegisterAgentOptions, resolveIdentity: typeof resolveAuth) {
+function createAccessResolver(
+  options: RegisterAgentOptions,
+  resolveIdentity: typeof resolveAuth,
+) {
   return async (request: Request, env: Env): Promise<AgentToolAccessResult> => {
     const auth = await resolveIdentity(request, env)
     if (!auth) return { ok: false, status: 401 }
@@ -49,14 +52,23 @@ function createAccessResolver(options: RegisterAgentOptions, resolveIdentity: ty
     // same primitive that gates the admin and realtime routes. A membership
     // read that could not complete is 503 (retryable), never 403: a transient
     // room failure must not present as a permission denial.
-    const membership = await resolveAppMembership(env, auth.userId, request.signal)
+    const membership = await resolveAppMembership(
+      env,
+      auth.userId,
+      request.signal,
+    )
     if (!membership) return { ok: false, status: 503 }
     if (!membership.member) return { ok: false, status: 403 }
 
     if (options.authorize) {
       try {
         if (
-          !(await options.authorize({ userId: auth.userId, claims: auth.claims, request, env }))
+          !(await options.authorize({
+            userId: auth.userId,
+            claims: auth.claims,
+            request,
+            env,
+          }))
         ) {
           return { ok: false, status: 403 }
         }
@@ -74,9 +86,16 @@ function createAccessResolver(options: RegisterAgentOptions, resolveIdentity: ty
  * Register generated app assistant routes with one authorization policy for
  * both the website AI and the local assistant. The CLI is only their bridge.
  */
-export function registerAgent(app: Hono<AppContext>, options: RegisterAgentOptions): void {
+export function registerAgent(
+  app: Hono<AppContext>,
+  options: RegisterAgentOptions,
+): void {
   if (options.inApp !== false) {
-    registerAiChatRoutes(app, createAccessResolver(options, resolveAuth), options.tools)
+    registerAiChatRoutes(
+      app,
+      createAccessResolver(options, resolveAuth),
+      options.tools,
+    )
   }
   if (options.local !== false) {
     registerAgentToolRoutes(app, {

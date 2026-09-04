@@ -128,7 +128,12 @@ app.use('/api/*', cors())
 // arms its alarm in that first fetch — so wake it from the request path, or a
 // deployed schedule waits for a visitor. Once per isolate; no-op without tasks.
 app.use('*', async (c, next) => {
-  armCronRoom(c.executionCtx, c.env.CRON_ROOMS, `app:${c.env.DEEPSPACE_APP_ID}`, cronTasks)
+  armCronRoom(
+    c.executionCtx,
+    c.env.CRON_ROOMS,
+    `app:${c.env.DEEPSPACE_APP_ID}`,
+    cronTasks,
+  )
   await next()
 })
 

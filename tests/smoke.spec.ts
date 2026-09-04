@@ -26,14 +26,17 @@ test.describe('Smoke tests', () => {
     expect(errors).toEqual([])
   })
 
-  test('static contract: landing fires no auth request, opens no websocket', async ({ page }) => {
+  test('static contract: landing fires no auth request, opens no websocket', async ({
+    page,
+  }) => {
     const offenders: string[] = []
     page.on('request', (req) => {
       if (req.url().includes('/api/auth/')) offenders.push(req.url())
     })
     // Only the DO room route counts — vite's own HMR socket is a dev artifact.
     page.on('websocket', (ws) => {
-      if (new URL(ws.url()).pathname.startsWith('/ws/')) offenders.push(`ws: ${ws.url()}`)
+      if (new URL(ws.url()).pathname.startsWith('/ws/'))
+        offenders.push(`ws: ${ws.url()}`)
     })
     await page.goto('/')
     await expect(page.getByTestId('static-landing')).toBeVisible()
@@ -43,16 +46,24 @@ test.describe('Smoke tests', () => {
 
   test('dynamic app boundary mounts on /home', async ({ page }) => {
     await page.goto('/home')
-    await expect(page.getByTestId('app-navigation')).toBeVisible({ timeout: 15000 })
-    await expect(page.getByRole('heading', { name: 'Build the brief. Ship the frame.' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /preview pipeline/i })).toBeVisible()
+    await expect(page.getByTestId('app-navigation')).toBeVisible({
+      timeout: 15000,
+    })
+    await expect(
+      page.getByRole('heading', { name: 'Build the brief. Ship the frame.' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: /preview pipeline/i }),
+    ).toBeVisible()
     await expect(page.getByText('This is a placeholder page.')).toHaveCount(0)
     await expect(page).toHaveTitle(/MotionBrief/)
   })
 
   test('sign-in button visible when logged out', async ({ page }) => {
     await page.goto('/home')
-    await expect(page.getByTestId('nav-sign-in-button')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByTestId('nav-sign-in-button')).toBeVisible({
+      timeout: 15000,
+    })
     await expect(page.getByTestId('nav-user-name')).toHaveCount(0)
   })
 

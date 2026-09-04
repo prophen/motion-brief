@@ -13,7 +13,9 @@ interface RouterInitialization {
 interface RecoveryOptions {
   storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null
   reload: () => void
-  onPreloadError: (listener: (event: Pick<Event, 'preventDefault'>) => void) => void
+  onPreloadError: (
+    listener: (event: Pick<Event, 'preventDefault'>) => void,
+  ) => void
 }
 
 function browserRecovery(): RecoveryOptions {
@@ -27,7 +29,8 @@ function browserRecovery(): RecoveryOptions {
   return {
     storage,
     reload: () => window.location.reload(),
-    onPreloadError: (listener) => window.addEventListener('vite:preloadError', listener),
+    onPreloadError: (listener) =>
+      window.addEventListener('vite:preloadError', listener),
   }
 }
 

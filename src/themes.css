@@ -18,7 +18,7 @@
 
 /* Paper — light example theme; shows the full token contract incl.
  * `color-scheme: light`. Replace or delete it once the app has its own. */
-[data-theme="paper"] {
+[data-theme='paper'] {
   color-scheme: light;
   --color-background: #ffffff;
   --color-foreground: #0a0a0a;
@@ -45,7 +45,7 @@
   --color-shell-panel: #ffffff;
 }
 
-[data-theme="motion-studio"] {
+[data-theme='motion-studio'] {
   color-scheme: dark;
   --color-background: #0d0d0b;
   --color-foreground: #f4f1e8;

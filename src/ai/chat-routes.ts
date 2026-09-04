@@ -33,7 +33,11 @@ import {
   appendMessage,
   loggableError,
 } from 'deepspace/worker'
-import type { AgentToolAccessResult, ChatTurn, VerifyResult } from 'deepspace/worker'
+import type {
+  AgentToolAccessResult,
+  ChatTurn,
+  VerifyResult,
+} from 'deepspace/worker'
 import { schemas } from '../schemas.js'
 import { buildSystemPrompt } from './tools.js'
 import type { buildTools } from './tools.js'
@@ -48,7 +52,9 @@ function recordRoomStub(env: Env): DurableObjectStub {
   // Rooms are keyed by the immutable app id — the same `app:${DEEPSPACE_APP_ID}`
   // the client's RecordScope (SCOPE_ID) and worker.ts's own stubs use. Keying
   // by APP_NAME would read/write a room the browser never subscribes to.
-  return env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`))
+  return env.RECORD_ROOMS.get(
+    env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`),
+  )
 }
 
 // Cap on user-supplied content length. Far above any realistic message;
@@ -73,7 +79,9 @@ export function registerAiChatRoutes(
   buildTools: ToolFactory,
 ): void {
   // One chokepoint for the access-decision → HTTP mapping on every chat route.
-  const requireAccess = async (c: Context<AppContext>): Promise<VerifyResult | Response> => {
+  const requireAccess = async (
+    c: Context<AppContext>,
+  ): Promise<VerifyResult | Response> => {
     const access = await resolveAccess(c.req.raw, c.env)
     if (access.ok) return access.auth
     const error =
@@ -90,7 +98,9 @@ export function registerAiChatRoutes(
     const auth = await requireAccess(c)
     if (auth instanceof Response) return auth
 
-    const body = await c.req.json<{ title?: string }>().catch(() => ({}) as { title?: string })
+    const body = await c.req
+      .json<{ title?: string }>()
+      .catch(() => ({}) as { title?: string })
     const stub = recordRoomStub(c.env)
     const chat = await createChat(stub, auth.userId, {
       title: body.title ?? 'New chat',
@@ -108,7 +118,9 @@ export function registerAiChatRoutes(
     const chat = await getChat(stub, id, auth.userId)
     if (!chat) return c.json({ error: 'Not found' }, 404)
 
-    const body = await c.req.json<{ title?: string }>().catch(() => ({}) as { title?: string })
+    const body = await c.req
+      .json<{ title?: string }>()
+      .catch(() => ({}) as { title?: string })
     const patch: { title?: string } = {}
     if (typeof body.title === 'string') patch.title = body.title
     // `updateChat` re-checks the chat; a delete racing this PATCH answers 404
@@ -152,18 +164,24 @@ export function registerAiChatRoutes(
       content?: string
       modelId?: string
     }>()
-    if (typeof chatId !== 'string' || !chatId) return c.json({ error: 'chatId is required' }, 400)
+    if (typeof chatId !== 'string' || !chatId)
+      return c.json({ error: 'chatId is required' }, 400)
     if (typeof userMessageId !== 'string' || !userMessageId)
       return c.json({ error: 'userMessageId is required' }, 400)
     if (typeof content !== 'string' || content.trim() === '')
       return c.json({ error: 'content is required' }, 400)
     if (content.length > MAX_USER_CONTENT_LENGTH) {
-      return c.json({ error: `content exceeds ${MAX_USER_CONTENT_LENGTH} chars` }, 413)
+      return c.json(
+        { error: `content exceeds ${MAX_USER_CONTENT_LENGTH} chars` },
+        413,
+      )
     }
     const selectedModel = resolveDeepSpaceAgentModel(modelId, 'application')
     if (!selectedModel) {
       // Name the valid ids: the caller has no other way to learn them here.
-      const modelIds = listDeepSpaceAgentModels('application').map((model) => model.id)
+      const modelIds = listDeepSpaceAgentModels('application').map(
+        (model) => model.id,
+      )
       return c.json(
         {
           error: `Unknown modelId: ${modelId}. Valid: ${modelIds.join(', ')}`,
@@ -177,7 +195,10 @@ export function registerAiChatRoutes(
     const stub = recordRoomStub(c.env)
     const chat = await getChat(stub, chatId, auth.userId)
     if (!chat) {
-      console.warn('[ai-chat] REQUEST chat-not-found', { userId: auth.userId, chatId })
+      console.warn('[ai-chat] REQUEST chat-not-found', {
+        userId: auth.userId,
+        chatId,
+      })
       return c.json({ error: 'Chat not found' }, 404)
     }
 
@@ -203,10 +224,14 @@ export function registerAiChatRoutes(
     // orphan user from history would survive the loop (no following user in
     // raw history) and then sit next to the in-flight user, sending two
     // consecutive user messages to the LLM.
-    const allTurns: ChatTurn[] = [...rawTurns, { id: userMessageId, role: 'user', content }]
+    const allTurns: ChatTurn[] = [
+      ...rawTurns,
+      { id: userMessageId, role: 'user', content },
+    ]
     const turns: ChatTurn[] = []
     for (let i = 0; i < allTurns.length; i++) {
-      if (allTurns[i].role === 'user' && allTurns[i + 1]?.role === 'user') continue
+      if (allTurns[i].role === 'user' && allTurns[i + 1]?.role === 'user')
+        continue
       turns.push(allTurns[i])
     }
 
@@ -217,11 +242,11 @@ export function registerAiChatRoutes(
 
     // User-billed: compaction is part of the user's chat experience, not infra.
     const summarizer = makeDefaultSummarizer(c.env, { authToken: jwt })
-    const { messages: prepared, newSummary } = await prepareMessagesWithCompaction(
-      turns,
-      DEFAULT_CONTEXT_CONFIG,
-      { summarizer, cachedSummary },
-    )
+    const { messages: prepared, newSummary } =
+      await prepareMessagesWithCompaction(turns, DEFAULT_CONTEXT_CONFIG, {
+        summarizer,
+        cachedSummary,
+      })
     if (newSummary) {
       await updateChat(stub, chatId, auth.userId, {
         compactedSummary: newSummary.text,
@@ -243,14 +268,18 @@ export function registerAiChatRoutes(
     // assistant rows into the assistant + paired tool messages the SDK expects.
     const [first, ...rest] = prepared
     const summary = first?.role === 'system' ? first : null
-    const systemText = summary ? `${baseSystem}\n\n${summary.content}` : baseSystem
+    const systemText = summary
+      ? `${baseSystem}\n\n${summary.content}`
+      : baseSystem
     const messages = turnsToCoreMessages(summary ? rest : prepared)
 
     // The SDK executor runs each tool as the verified user and forwards the
     // route's abort signal, so a tool fetch in flight is cancelled if the
     // client navigates away mid-stream. The local assistant routes use the
     // same executor, keeping both surfaces' tool behavior identical.
-    const tools = buildTools(createUserToolExecutor(c.env, auth.userId, c.req.raw.signal))
+    const tools = buildTools(
+      createUserToolExecutor(c.env, auth.userId, c.req.raw.signal),
+    )
 
     // Allocate the assistant row id BEFORE streaming starts so we can echo it
     // back via a response header. The client tags its in-flight overlay with
@@ -299,12 +328,16 @@ export function registerAiChatRoutes(
           for (let attempt = 1; attempt <= 2; attempt++) {
             try {
               if ((await fn()) === false) {
-                console.warn(`[ai-chat] ${label} skipped — chat ${chatId} no longer exists`)
+                console.warn(
+                  `[ai-chat] ${label} skipped — chat ${chatId} no longer exists`,
+                )
                 return false
               }
               return true
             } catch (err) {
-              console.error(`[ai-chat] ${label} ${attempt === 1 ? 'failed, retrying once' : 'retry failed'}: ${loggableError(err)}`)
+              console.error(
+                `[ai-chat] ${label} ${attempt === 1 ? 'failed, retrying once' : 'retry failed'}: ${loggableError(err)}`,
+              )
             }
           }
           return false
@@ -343,7 +376,9 @@ export function registerAiChatRoutes(
           // that case on its own (an unguarded `records.update` would upsert
           // the row back into existence), so this only decides the title.
           const fresh = await getChat(stub, chatId, auth.userId)
-          const patch: { title?: string; model?: string } = { model: usedModelId }
+          const patch: { title?: string; model?: string } = {
+            model: usedModelId,
+          }
           if (fresh && (!fresh.title || fresh.title === 'New chat')) {
             patch.title = deriveTitle(content)
           }
