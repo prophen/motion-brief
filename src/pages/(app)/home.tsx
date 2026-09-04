@@ -1404,9 +1404,10 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="mt-10 flex items-center justify-between border-t border-border pt-5">
+        <div className="mt-10 grid grid-cols-[1fr_auto_1fr] items-center border-t border-border pt-5">
           <Button
             variant="ghost"
+            className="justify-self-start"
             onClick={() => setActiveStep((step) => Math.max(0, step - 1))}
             disabled={activeStep === 0}
           >
@@ -1416,16 +1417,16 @@ export default function HomePage() {
           <span className="text-xs text-muted-foreground">
             {activeStep + 1} / {steps.length}
           </span>
-          <Button
-            variant="outline"
-            onClick={() =>
-              setActiveStep((step) => Math.min(steps.length - 1, step + 1))
-            }
-            disabled={activeStep === steps.length - 1}
-          >
-            Next
-            <ChevronRight />
-          </Button>
+          {activeStep < steps.length - 1 && (
+            <Button
+              variant="outline"
+              className="justify-self-end"
+              onClick={() => setActiveStep((step) => step + 1)}
+            >
+              Next
+              <ChevronRight />
+            </Button>
+          )}
         </div>
       </div>
     </section>
