@@ -227,13 +227,16 @@ export function ToastProvider({
   )
 
   const positionClasses: Record<string, string> = {
-    'top-right': 'top-4 right-4',
-    'top-left': 'top-4 left-4',
-    'bottom-right': 'bottom-4 right-4',
-    'bottom-left': 'bottom-4 left-4',
-    'top-center': 'top-4 left-1/2 -translate-x-1/2',
-    'bottom-center': 'bottom-4 left-1/2 -translate-x-1/2',
+    'top-right': 'right-4',
+    'top-left': 'left-4',
+    'bottom-right': 'right-4',
+    'bottom-left': 'left-4',
+    'top-center': 'left-1/2 -translate-x-1/2',
+    'bottom-center': 'left-1/2 -translate-x-1/2',
   }
+  const verticalInset = position.startsWith('top')
+    ? { top: 'max(1rem, env(safe-area-inset-top, 0px))' }
+    : { bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }
 
   return (
     <ToastContext.Provider
@@ -255,7 +258,8 @@ export function ToastProvider({
           container (and every toast in it) silently eats clicks on whatever
           sits underneath. Each toast re-enables events for itself. */}
       <div
-        className={`pointer-events-none fixed z-[100] flex flex-col gap-2 ${positionClasses[position]}`}
+        className={`pointer-events-none fixed z-[100] flex max-w-[calc(100vw-2rem)] flex-col gap-2 ${positionClasses[position]}`}
+        style={verticalInset}
       >
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />

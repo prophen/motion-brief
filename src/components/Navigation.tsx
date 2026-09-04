@@ -75,7 +75,7 @@ export default function Navigation() {
     <>
       <nav
         data-testid="app-navigation"
-        className="border-b border-border bg-background"
+        className="safe-area-top border-b border-border bg-background"
       >
         <div className="mx-auto flex h-12 max-w-7xl items-center gap-4 px-4">
           <Link

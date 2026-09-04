@@ -19,10 +19,10 @@ const stages = [
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <div className="relative min-h-dvh overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_24%,rgba(255,107,53,.16),transparent_26%),radial-gradient(circle_at_18%_80%,rgba(255,107,53,.07),transparent_28%)]" />
 
-      <header className="relative border-b border-border/70">
+      <header className="safe-area-top relative border-b border-border/70">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
           <Link
             to="/"

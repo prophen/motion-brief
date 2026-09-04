@@ -336,7 +336,6 @@ export default function HomePage() {
         { maxAttempts: 1 },
       )
       jobsStartedHere.current.add(jobId)
-      toast.success('Brief queued', 'OpenAI is shaping the editable concept.')
     } catch (error) {
       toast.error(
         'Could not queue',
@@ -368,10 +367,6 @@ export default function HomePage() {
           { maxAttempts: 1 },
         )
         jobsStartedHere.current.add(jobId)
-        toast.success(
-          'Storage retry queued',
-          'Reusing the generated image at no generation cost.',
-        )
       } else {
         const jobId = await enqueue(
           'motionbrief-generate-still',
@@ -379,7 +374,6 @@ export default function HomePage() {
           { maxAttempts: 1 },
         )
         jobsStartedHere.current.add(jobId)
-        toast.success('Visual queued', 'FAL is generating one campaign image.')
       }
     } catch (error) {
       toast.error(
@@ -412,10 +406,6 @@ export default function HomePage() {
           { maxAttempts: 1 },
         )
         jobsStartedHere.current.add(jobId)
-        toast.success(
-          'Storage retry queued',
-          'Reusing the generated narration at no generation cost.',
-        )
       } else {
         const jobId = await enqueue(
           'motionbrief-generate-narration',
@@ -427,10 +417,6 @@ export default function HomePage() {
           { maxAttempts: 1 },
         )
         jobsStartedHere.current.add(jobId)
-        toast.success(
-          'Narration queued',
-          'ElevenLabs is recording the selected voice.',
-        )
       }
     } catch (error) {
       toast.error(
@@ -452,10 +438,6 @@ export default function HomePage() {
         { maxAttempts: 1 },
       )
       jobsStartedHere.current.add(jobId)
-      toast.info(
-        'Updating narration file',
-        'Re-storing the existing audio as .mp3. No provider call will be made.',
-      )
     } catch (error) {
       toast.error(
         'Could not repair narration',
@@ -496,10 +478,6 @@ export default function HomePage() {
           { maxAttempts: 1 },
         )
         jobsStartedHere.current.add(jobId)
-        toast.success(
-          'Final storage retry queued',
-          'Reusing the existing Shotstack result at no render cost.',
-        )
       } else {
         const audioLength = audioAsset
           ? await readMediaDuration(appFileUrl(audioAsset.key), 'audio')
@@ -517,10 +495,6 @@ export default function HomePage() {
           { maxAttempts: 1 },
         )
         jobsStartedHere.current.add(jobId)
-        toast.info(
-          'Checking render assets',
-          'No paid provider call has been made.',
-        )
       }
     } catch (error) {
       preflightRequestedAt.current = null
@@ -725,10 +699,6 @@ export default function HomePage() {
     )
       .then((jobId) => {
         jobsStartedHere.current.add(jobId)
-        toast.success(
-          'Final render queued',
-          'One confirmed Shotstack request was submitted.',
-        )
       })
       .catch((error) =>
         toast.error(
@@ -827,10 +797,13 @@ export default function HomePage() {
       <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
         {showingFinalRender ? (
           <video
+            key={renderAsset?.key ?? renderUrl}
             src={renderUrl}
+            poster={imageUrl || undefined}
             aria-label="Final MotionBrief video"
             className="absolute inset-0 h-full w-full object-cover"
             controls
+            preload="metadata"
             playsInline
             loop
           />
@@ -850,6 +823,7 @@ export default function HomePage() {
       {activeStep === 2 && audioUrl && (
         <div className="border-t border-border p-3">
           <audio
+            key={audioAsset?.key ?? audioUrl}
             aria-label="Generated narration preview"
             src={audioUrl}
             controls
