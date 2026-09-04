@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   Check,
+  Clapperboard,
   FileText,
   Image,
   Mic2,
@@ -11,8 +12,9 @@ import { buttonVariants } from '../components/ui'
 
 const stages = [
   { label: 'Creative brief', icon: FileText },
-  { label: 'Campaign visual', icon: Image },
+  { label: 'Visual + motion style', icon: Image },
   { label: 'Narration', icon: Mic2 },
+  { label: 'Final MP4', icon: Clapperboard },
 ] as const
 
 export default function LandingPage() {
@@ -56,8 +58,8 @@ export default function LandingPage() {
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">
               MotionBrief shapes a creator prompt into an editable brief,
-              campaign visual, five-second animation, narration, and final
-              vertical MP4—all in one focused workspace.
+              campaign visual, reliable five-second camera move, narration, and
+              final vertical MP4—all in one focused workspace.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link className={buttonVariants({ size: 'lg' })} to="/home?new=1">
@@ -119,15 +121,18 @@ export default function LandingPage() {
                 </div>
 
                 <div className="relative min-h-72 overflow-hidden border-t border-border bg-[#211d17] sm:min-h-0 sm:border-l sm:border-t-0">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(255,174,105,.65),transparent_23%),linear-gradient(160deg,#57442d_0%,#1b1915_55%,#090908_100%)]" />
-                  <div className="absolute left-[16%] top-[18%] h-[42%] w-[70%] -rotate-6 border border-white/20 bg-white/5 shadow-2xl backdrop-blur-sm" />
-                  <div className="absolute inset-x-5 bottom-6">
-                    <p className="text-[9px] uppercase tracking-[.25em] text-white/55">
-                      Campaign headline
-                    </p>
-                    <p className="mt-2 text-2xl font-black uppercase leading-[.9] tracking-[-.05em] text-white">
-                      Hold every adventure
-                    </p>
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,#f4c98b_0%,#9fb08c_38%,#506644_58%,#1c1a15_59%,#292219_100%)]" />
+                  <div className="absolute -right-5 top-8 size-20 rounded-full bg-[#fff0c9]/80 blur-sm" />
+                  <div className="absolute inset-y-0 left-[18%] w-2 bg-black/35" />
+                  <div className="absolute inset-x-0 top-[58%] h-1 bg-black/45" />
+                  <div className="absolute inset-x-0 bottom-0 h-[34%] bg-[linear-gradient(155deg,#6e5036,#211912)]" />
+                  <div className="absolute bottom-[16%] left-1/2 h-[31%] w-[58%] -translate-x-1/2 rounded-[20%] bg-[#ded3bd] shadow-[0_16px_30px_rgba(0,0,0,.5)]">
+                    <div className="absolute left-1/2 top-[32%] size-[45%] -translate-x-1/2 rounded-full border-[6px] border-[#b9aa90] bg-[#171715] shadow-inner" />
+                    <div className="absolute left-[13%] top-[16%] size-3 rounded-sm bg-[#403a31]" />
+                    <div className="absolute right-[13%] top-[16%] size-3 rounded-full bg-[#403a31]" />
+                  </div>
+                  <div className="absolute right-3 top-3 rounded-full border border-white/30 bg-black/45 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.14em] text-white backdrop-blur-sm">
+                    Slow push in
                   </div>
                 </div>
               </div>
@@ -143,7 +148,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-2 font-medium text-foreground">
             <span>OpenAI · Brief</span>
-            <span>FAL · Visual + motion</span>
+            <span>FAL · Visual</span>
             <span>ElevenLabs · Voice</span>
             <span>Shotstack · Final MP4</span>
           </div>
