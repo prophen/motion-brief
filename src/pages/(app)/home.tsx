@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuthProfileReady, useJobs, useMutations, useQuery } from 'deepspace'
-import { Check, Clapperboard, Clipboard, Download, FileText, FolderOpen, Image, Mic2, PackageCheck, Play, Plus, RefreshCw, Save, Sparkles } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Clapperboard, Clipboard, Download, FileText, FolderOpen, Image, Mic2, Play, Plus, RefreshCw, Save, Sparkles } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button, buttonVariants, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, useToast } from '../../components/ui'
 import { SCOPE_ID } from '../../constants'
@@ -31,9 +31,8 @@ type PipelineResult = {
 const steps = [
   ['Brief', FileText],
   ['Visual', Image],
-  ['Motion', Play],
   ['Voice', Mic2],
-  ['Render', Clapperboard],
+  ['Export', Clapperboard],
 ] as const
 
 function appFileUrl(key: string) {
@@ -67,6 +66,7 @@ export default function HomePage() {
   const [recordId, setRecordId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [queuing, setQueuing] = useState(false)
+  const [activeStep, setActiveStep] = useState(0)
   const [renderAttemptStartedAt, setRenderAttemptStartedAt] = useState<number | null>(null)
   const loadedRecord = useRef<string | null>(null)
   const appliedBriefJob = useRef<string | null>(null)
@@ -90,7 +90,6 @@ export default function HomePage() {
   const audioUrl = audioAsset ? appFileUrl(audioAsset.key) : draft.audioUrl
   const renderUrl = renderAsset ? appFileUrl(renderAsset.key) : draft.renderUrl
   const narrationNeedsMp3Repair = Boolean(audioAsset && !audioAsset.key.toLowerCase().endsWith('.mp3'))
-  const packageReady = Boolean(recordId && renderAsset)
   const briefJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-brief'], recordId), [jobs, recordId])
   const stillJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-still', 'motionbrief-store-still'], recordId), [jobs, recordId])
   const motionJob = useMemo(() => latestJob(jobs, ['motionbrief-generate-motion', 'motionbrief-store-motion'], recordId), [jobs, recordId])
@@ -295,14 +294,6 @@ export default function HomePage() {
     toast.success('Package downloaded', 'The Markdown brief includes links to both generated assets.')
   }
 
-  async function completePackage() {
-    if (!recordId || !packageReady) return toast.info('Finish the package', 'Generate both the visual and narration first.')
-    const next = { ...draft, status: 'complete' as const }
-    await putConfirmed(recordId, next)
-    setDraft(next)
-    toast.success('Creative package ready', 'Your brief, visual, headline, and narration are complete.')
-  }
-
   useEffect(() => {
     if (briefJob?.status !== 'succeeded' || !briefJob.result?.brief || appliedBriefJob.current === briefJob.id) return
     appliedBriefJob.current = briefJob.id
@@ -389,8 +380,7 @@ export default function HomePage() {
 
   const stepState = [
     { job: briefJob, done: Boolean(recordId && draft.stillPrompt.trim()) },
-    { job: stillJob, done: Boolean(imageAsset) },
-    { job: motionJob, done: Boolean(videoAsset) },
+    { job: motionJob ?? stillJob, done: Boolean(imageAsset && videoAsset) },
     { job: voiceJob, done: Boolean(audioAsset) },
     { job: currentRenderActivity, done: Boolean(renderAsset) },
   ]
@@ -406,107 +396,86 @@ export default function HomePage() {
     )
   }
 
-  return (
-    <div className="min-h-full bg-background text-foreground">
-      <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[minmax(0,1fr)_390px]">
-        <section aria-labelledby="studio-heading" className="min-w-0 border-border lg:border-r">
-          <header className="border-b border-border px-5 py-7 md:px-9">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Prompt to campaign concept</p>
-                <h1 id="studio-heading" className="max-w-4xl text-3xl font-semibold tracking-[-.04em] md:text-5xl">Shape the idea. See it. Hear it.</h1>
-                <p className="mt-3 max-w-2xl text-muted-foreground">MotionBrief turns one rough prompt into an editable creative brief, a campaign visual, and a voiced concept package.</p>
-              </div>
-              <div className="flex flex-wrap gap-2 xl:justify-end">
-                <Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save />Save brief</Button>
-                <Link className={buttonVariants({ variant: 'outline' })} to="/home?new=1"><Plus />New project</Link>
-                <Link className={buttonVariants({ variant: 'outline' })} to="/projects"><FolderOpen />Projects</Link>
-              </div>
-            </div>
-          </header>
-
-          <div className="flex flex-col gap-3 border-b border-border bg-shell/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-9">
-            <div>
-              <p className="text-sm font-medium">Production</p>
-              <p className="text-xs text-muted-foreground">Generate assets after saving your brief.</p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <Button onClick={generateStill} loading={stillJob?.status === 'queued' || stillJob?.status === 'running'} disabled={!recordId || (!draft.stillPrompt.trim() && !stillJob?.result?.temporaryImageUrl)}><Image />{stillJob?.result?.temporaryImageUrl ? 'Retry image storage · $0' : 'Generate visual · $0.035'}</Button>
-              <Button onClick={generateMotion} loading={motionJob?.status === 'queued' || motionJob?.status === 'running'} disabled={!recordId || !MOTION_GENERATION_ENABLED || (!imageAsset && !motionJob?.result?.temporaryVideoUrl)}><Play />{motionJob?.result?.temporaryVideoUrl ? 'Retry video storage · $0' : 'Animate · est. $0.25'}</Button>
-              <Button onClick={generateNarration} loading={voiceJob?.status === 'queued' || voiceJob?.status === 'running'} disabled={!recordId || (!draft.narration.trim() && !voiceJob?.result?.temporaryAudioUrl)}><Mic2 />{voiceJob?.result?.temporaryAudioUrl ? 'Retry audio storage · $0' : `Narrate · est. $${narrationReservationEstimate(draft.narration).toFixed(4)}`}</Button>
-              <Button onClick={renderFinal} loading={currentRenderActivity?.status === 'queued' || currentRenderActivity?.status === 'running'} disabled={!recordId || !FINAL_RENDER_ENABLED || (!videoAsset && !renderJob?.result?.temporaryRenderUrl)}><Clapperboard />{renderJob?.result?.temporaryRenderUrl ? 'Retry final storage · $0' : 'Render final · usage-based'}</Button>
-            </div>
-          </div>
-
-          {narrationNeedsMp3Repair && <div className="flex flex-col gap-3 border-b border-amber-500/30 bg-amber-500/10 px-5 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between md:px-9"><p>Your existing narration uses the old .mpeg filename that Shotstack rejects.</p><Button variant="outline" onClick={repairNarrationFilename} loading={voiceJob?.status === 'queued' || voiceJob?.status === 'running'}><RefreshCw />Repair as MP3 · $0</Button></div>}
-
-          <div className="grid gap-8 p-5 md:p-9 xl:grid-cols-[1fr_.72fr]">
-            <div className="space-y-6">
-              <Field id="creator-prompt" label="Creator prompt">
-                <Textarea id="creator-prompt" value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed" />
-                <Button className="mt-3" onClick={generateBrief} loading={queuing || briefJob?.status === 'queued' || briefJob?.status === 'running'} disabled={!recordId}><Sparkles />Generate AI brief</Button>
-              </Field>
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field id="project-name" label="Project name"><Input id="project-name" value={draft.title} onChange={event => set('title', event.target.value)} /></Field>
-                <Field id="audience" label="Audience"><Input id="audience" value={draft.audience} onChange={event => set('audience', event.target.value)} /></Field>
-              </div>
-              <Field id="objective" label="Objective"><Textarea id="objective" value={draft.objective} onChange={event => set('objective', event.target.value)} className="min-h-24 bg-card" /></Field>
-              <Field id="visual-direction" label="Visual direction"><Textarea id="visual-direction" value={draft.visualDirection} onChange={event => set('visualDirection', event.target.value)} className="min-h-24 bg-card" /></Field>
-              <Field id="image-prompt" label="Image prompt"><Textarea id="image-prompt" value={draft.stillPrompt} onChange={event => set('stillPrompt', event.target.value)} className="min-h-28 bg-card" /></Field>
-              <Field id="motion-direction" label="Motion direction"><Textarea id="motion-direction" value={draft.motionPrompt || draft.motionDirection} onChange={event => set('motionPrompt', event.target.value)} className="min-h-24 bg-card" /></Field>
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field id="narration" label="Narration">
-                  <Textarea id="narration" value={draft.narration} onChange={event => set('narration', event.target.value)} className="min-h-28 bg-card" />
-                  <p className={`text-xs ${countWords(draft.narration) > NARRATION_HARD_MAX_WORDS ? 'text-destructive' : 'text-muted-foreground'}`}>{countWords(draft.narration)} / {NARRATION_HARD_MAX_WORDS} words · target 8–11</p>
-                  <Label htmlFor="narration-voice">Narration voice</Label>
-                  <Select value={draft.voiceId} onValueChange={value => set('voiceId', value)}><SelectTrigger id="narration-voice"><SelectValue placeholder="Choose a voice" /></SelectTrigger><SelectContent>{MOTIONBRIEF_VOICES.map(voice => <SelectItem key={voice.id} value={voice.id}>{voice.name} · {voice.style}</SelectItem>)}</SelectContent></Select>
-                </Field>
-                <Field id="headline" label="Headline"><Textarea id="headline" value={draft.headline} onChange={event => set('headline', event.target.value)} className="min-h-28 bg-card font-semibold uppercase" /></Field>
-              </div>
-            </div>
-
-            <aside aria-label="Campaign concept preview" className="space-y-4">
-              <div className="sticky top-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.28)]">
-                <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
-                  {renderUrl ? <video src={renderUrl} aria-label="Final MotionBrief video" className="absolute inset-0 h-full w-full object-cover" controls playsInline loop /> : videoUrl ? <video src={videoUrl} aria-label="Generated MotionBrief animation" className="absolute inset-0 h-full w-full object-cover" controls playsInline loop /> : imageUrl ? <img src={imageUrl} alt="Generated MotionBrief campaign visual" className="absolute inset-0 h-full w-full object-cover" /> : <><div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(255,107,53,.5),transparent_28%),linear-gradient(145deg,#40372a_0%,#151511_58%,#080807_100%)]" /><div className="absolute left-[12%] top-[18%] h-[38%] w-[70%] rotate-[-8deg] border border-white/20 bg-white/5 backdrop-blur-sm" /></>}
-                </div>
-                {audioUrl && !renderUrl && <div className="border-t border-border p-3"><audio aria-label="Generated narration preview" src={audioUrl} controls className="w-full" /></div>}
-                <div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground"><span>9:16 · 5 seconds</span><span>{renderUrl ? 'Final MP4' : videoUrl ? 'Motion ready' : audioUrl ? 'Voiced concept' : imageUrl ? 'Visual ready' : 'Live preview'}</span></div>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        <aside aria-labelledby="package-heading" className="bg-shell p-5 md:p-7">
-          <h2 id="package-heading" className="text-xs font-semibold uppercase tracking-[.2em] text-muted-foreground">Creative package</h2>
-          <div className="mt-5 space-y-2">
-            {steps.map(([label, Icon], index) => {
-              const state = stepState[index]
-              const active = state.job && ['queued', 'running'].includes(state.job.status)
-              const message = state.done ? 'Ready' : state.job?.status === 'failed' ? state.job.error ?? 'Failed' : active ? state.job?.progressMessage ?? 'Working' : 'Waiting'
-              return <div key={label} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"><div className={`flex h-9 w-9 items-center justify-center rounded-lg ${state.done ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>{state.done ? <Check /> : <Icon />}</div><div className="flex-1"><p className="font-medium">{label}</p><p className="text-xs text-muted-foreground">{message}</p></div><span className="text-xs text-muted-foreground">0{index + 1}</span></div>
-            })}
-          </div>
-
-          <div className="mt-6 rounded-xl border border-border bg-card p-4">
-            <h3 className="font-medium">{draft.status === 'complete' ? 'Package complete' : 'Finish your package'}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Shotstack combines the five-second motion and narration into a clean final video. The editable campaign headline remains in your brief and package.</p>
-            <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100">Media links are viewable by anyone who receives them. Your editable project remains private to your account.</p>
-            <div className="mt-4 grid gap-2">
-              <Button onClick={completePackage} disabled={!packageReady || draft.status === 'complete'}><PackageCheck />{draft.status === 'complete' ? 'Creative package ready' : 'Mark package ready'}</Button>
-              <Button variant="outline" onClick={copyPackage} disabled={!recordId}><Clipboard />Copy brief</Button>
-              <Button variant="outline" onClick={downloadPackage} disabled={!recordId}><Download />Download Markdown</Button>
-              {imageUrl && <a className={buttonVariants({ variant: 'outline' })} href={imageUrl} download><Download />Download shareable visual</a>}
-              {audioUrl && <a className={buttonVariants({ variant: 'outline' })} href={audioUrl} download><Download />Download shareable narration</a>}
-              {videoUrl && <a className={buttonVariants({ variant: 'outline' })} href={videoUrl} download><Download />Download motion</a>}
-              {renderUrl && <a className={buttonVariants({ variant: 'outline' })} href={renderUrl} download><Download />Download final MP4</a>}
-            </div>
-          </div>
-
-          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Powered by DeepSpace integrations: OpenAI for the brief, FAL for the visual and motion, ElevenLabs for narration, and Shotstack for the final MP4.</p>
-        </aside>
+  const mediaPreview = (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_70px_rgba(0,0,0,.22)]">
+      <div className="relative aspect-[9/16] overflow-hidden bg-[#25221b]">
+        {renderUrl ? <video src={renderUrl} aria-label="Final MotionBrief video" className="absolute inset-0 h-full w-full object-cover" controls playsInline loop /> : videoUrl ? <video src={videoUrl} aria-label="Generated MotionBrief animation" className="absolute inset-0 h-full w-full object-cover" controls playsInline loop /> : imageUrl ? <img src={imageUrl} alt="Generated MotionBrief campaign visual" className="absolute inset-0 h-full w-full object-cover" /> : <><div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_24%,rgba(255,107,53,.5),transparent_28%),linear-gradient(145deg,#40372a_0%,#151511_58%,#080807_100%)]" /><div className="absolute left-[12%] top-[18%] h-[38%] w-[70%] rotate-[-8deg] border border-white/20 bg-white/5 backdrop-blur-sm" /></>}
       </div>
+      {audioUrl && !renderUrl && <div className="border-t border-border p-3"><audio aria-label="Generated narration preview" src={audioUrl} controls className="w-full" /></div>}
+      <div className="flex justify-between border-t border-border p-4 text-xs text-muted-foreground"><span>9:16 · 5 seconds</span><span>{renderUrl ? 'Final MP4' : videoUrl ? 'Motion ready' : audioUrl ? 'Voiced concept' : imageUrl ? 'Visual ready' : 'Preview'}</span></div>
     </div>
+  )
+
+  return (
+    <section aria-labelledby="studio-heading" className="min-h-full bg-background text-foreground">
+      <header className="border-b border-border px-5 py-6 md:px-9">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[.22em] text-primary">Studio</p>
+            <h1 id="studio-heading" className="text-3xl font-semibold tracking-[-.04em] md:text-4xl">{draft.title || 'Untitled creative brief'}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Work through one focused stage at a time.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={save} loading={saving} disabled={!ready}><Save />Save</Button>
+            <Link className={buttonVariants({ variant: 'outline' })} to="/home?new=1"><Plus />New</Link>
+            <Link className={buttonVariants({ variant: 'outline' })} to="/projects"><FolderOpen />Projects</Link>
+          </div>
+        </div>
+      </header>
+
+      <nav aria-label="Project workflow" className="border-b border-border bg-shell/55 px-5 md:px-9">
+        <div className="mx-auto grid max-w-6xl grid-cols-4">
+          {steps.map(([label, Icon], index) => (
+            <button key={label} onClick={() => setActiveStep(index)} aria-current={activeStep === index ? 'step' : undefined} className={`flex min-h-16 items-center justify-center gap-2 border-b-2 px-2 text-sm transition-colors ${activeStep === index ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+              <span className={`flex size-7 items-center justify-center rounded-full ${stepState[index].done ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>{stepState[index].done ? <Check className="size-4" /> : <Icon className="size-4" />}</span>
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <div className="mx-auto max-w-6xl px-5 py-8 md:px-9 md:py-10">
+        {activeStep === 0 && <div className="mx-auto max-w-3xl space-y-6">
+          <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Step 1 of 4</p><h2 className="mt-2 text-2xl font-semibold">Shape the brief</h2><p className="mt-1 text-sm text-muted-foreground">Start with the raw idea, then review every AI-generated field.</p></div>
+          <Field id="creator-prompt" label="Creator prompt"><Textarea id="creator-prompt" value={draft.prompt} onChange={event => set('prompt', event.target.value)} placeholder="A pocket camera that makes ordinary walks feel cinematic…" className="min-h-36 bg-card text-lg leading-relaxed" /><Button className="mt-3" onClick={generateBrief} loading={queuing || briefJob?.status === 'queued' || briefJob?.status === 'running'} disabled={!recordId}><Sparkles />Generate AI brief</Button></Field>
+          <div className="grid gap-5 md:grid-cols-2"><Field id="project-name" label="Project name"><Input id="project-name" value={draft.title} onChange={event => set('title', event.target.value)} /></Field><Field id="audience" label="Audience"><Input id="audience" value={draft.audience} onChange={event => set('audience', event.target.value)} /></Field></div>
+          <Field id="objective" label="Objective"><Textarea id="objective" value={draft.objective} onChange={event => set('objective', event.target.value)} className="min-h-24 bg-card" /></Field>
+          <Field id="headline" label="Campaign headline"><Input id="headline" value={draft.headline} onChange={event => set('headline', event.target.value)} className="font-semibold" /></Field>
+        </div>}
+
+        {activeStep === 1 && <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+          <div className="space-y-6"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Step 2 of 4</p><h2 className="mt-2 text-2xl font-semibold">Create the visual</h2><p className="mt-1 text-sm text-muted-foreground">Generate one still, then animate it into a five-second vertical clip.</p></div>
+            <Field id="visual-direction" label="Visual direction"><Textarea id="visual-direction" value={draft.visualDirection} onChange={event => set('visualDirection', event.target.value)} className="min-h-24 bg-card" /></Field>
+            <Field id="image-prompt" label="Image prompt"><Textarea id="image-prompt" value={draft.stillPrompt} onChange={event => set('stillPrompt', event.target.value)} className="min-h-28 bg-card" /></Field>
+            <Button onClick={generateStill} loading={stillJob?.status === 'queued' || stillJob?.status === 'running'} disabled={!recordId || (!draft.stillPrompt.trim() && !stillJob?.result?.temporaryImageUrl)}><Image />{stillJob?.result?.temporaryImageUrl ? 'Retry image storage · $0' : 'Generate visual · $0.035'}</Button>
+            <Field id="motion-direction" label="Motion direction"><Textarea id="motion-direction" value={draft.motionPrompt || draft.motionDirection} onChange={event => set('motionPrompt', event.target.value)} className="min-h-24 bg-card" /></Field>
+            <Button onClick={generateMotion} loading={motionJob?.status === 'queued' || motionJob?.status === 'running'} disabled={!recordId || !MOTION_GENERATION_ENABLED || (!imageAsset && !motionJob?.result?.temporaryVideoUrl)}><Play />{motionJob?.result?.temporaryVideoUrl ? 'Retry video storage · $0' : 'Animate · est. $0.25'}</Button>
+          </div><aside aria-label="Visual preview" className="mx-auto w-full max-w-64 lg:mx-0 lg:justify-self-end">{mediaPreview}</aside>
+        </div>}
+
+        {activeStep === 2 && <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+          <div className="space-y-6"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Step 3 of 4</p><h2 className="mt-2 text-2xl font-semibold">Add the voice</h2><p className="mt-1 text-sm text-muted-foreground">Keep the narration concise enough to fit the five-second cut.</p></div>
+            <Field id="narration" label="Narration"><Textarea id="narration" value={draft.narration} onChange={event => set('narration', event.target.value)} className="min-h-32 bg-card" /><p className={`text-xs ${countWords(draft.narration) > NARRATION_HARD_MAX_WORDS ? 'text-destructive' : 'text-muted-foreground'}`}>{countWords(draft.narration)} / {NARRATION_HARD_MAX_WORDS} words · target 8–11</p></Field>
+            <div className="space-y-2"><Label htmlFor="narration-voice">Narration voice</Label><Select value={draft.voiceId} onValueChange={value => set('voiceId', value)}><SelectTrigger id="narration-voice"><SelectValue placeholder="Choose a voice" /></SelectTrigger><SelectContent>{MOTIONBRIEF_VOICES.map(voice => <SelectItem key={voice.id} value={voice.id}>{voice.name} · {voice.style}</SelectItem>)}</SelectContent></Select></div>
+            {narrationNeedsMp3Repair ? <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100"><p>The existing narration uses the old .mpeg filename that Shotstack rejects.</p><Button className="mt-3" variant="outline" onClick={repairNarrationFilename} loading={voiceJob?.status === 'queued' || voiceJob?.status === 'running'}><RefreshCw />Repair as MP3 · $0</Button></div> : <Button onClick={generateNarration} loading={voiceJob?.status === 'queued' || voiceJob?.status === 'running'} disabled={!recordId || (!draft.narration.trim() && !voiceJob?.result?.temporaryAudioUrl)}><Mic2 />{voiceJob?.result?.temporaryAudioUrl ? 'Retry audio storage · $0' : `Narrate · est. $${narrationReservationEstimate(draft.narration).toFixed(4)}`}</Button>}
+          </div><aside aria-label="Narration preview" className="mx-auto w-full max-w-64 lg:mx-0 lg:justify-self-end">{mediaPreview}</aside>
+        </div>}
+
+        {activeStep === 3 && <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+          <div className="space-y-6"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-primary">Step 4 of 4</p><h2 className="mt-2 text-2xl font-semibold">Render and export</h2><p className="mt-1 text-sm text-muted-foreground">Combine the motion and narration into a clean final MP4 with no text overlay.</p></div>
+            <div className="grid gap-3 sm:grid-cols-4">{steps.map(([label, Icon], index) => { const state = stepState[index]; const working = state.job && ['queued', 'running'].includes(state.job.status); return <div key={label} className="rounded-xl border border-border bg-card p-3"><div className="flex items-center gap-2"><Icon className="size-4 text-primary" /><span className="text-sm font-medium">{label}</span></div><p className="mt-2 text-xs text-muted-foreground">{state.done ? 'Ready' : working ? state.job?.progressMessage ?? 'Working' : state.job?.status === 'failed' ? state.job.error ?? 'Failed' : 'Waiting'}</p></div> })}</div>
+            <Button onClick={renderFinal} loading={currentRenderActivity?.status === 'queued' || currentRenderActivity?.status === 'running'} disabled={!recordId || !FINAL_RENDER_ENABLED || (!videoAsset && !renderJob?.result?.temporaryRenderUrl)}><Clapperboard />{renderJob?.result?.temporaryRenderUrl ? 'Retry final storage · $0' : 'Render final · usage-based'}</Button>
+            <div className="rounded-2xl border border-border bg-card p-5"><h3 className="font-medium">Creative package</h3><p className="mt-1 text-sm text-muted-foreground">Your editable brief, campaign copy, and durable media links stay together.</p><p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Anyone with a media link can view it. The editable project remains private.</p><div className="mt-4 flex flex-wrap gap-2"><Button variant="outline" onClick={copyPackage} disabled={!recordId}><Clipboard />Copy brief</Button><Button variant="outline" onClick={downloadPackage} disabled={!recordId}><Download />Markdown</Button>{imageUrl && <a className={buttonVariants({ variant: 'outline' })} href={imageUrl} download><Download />Visual</a>}{audioUrl && <a className={buttonVariants({ variant: 'outline' })} href={audioUrl} download><Download />Narration</a>}{videoUrl && <a className={buttonVariants({ variant: 'outline' })} href={videoUrl} download><Download />Motion</a>}{renderUrl && <a className={buttonVariants({ variant: 'outline' })} href={renderUrl} download><Download />Final MP4</a>}</div></div>
+          </div><aside aria-label="Final video preview" className="mx-auto w-full max-w-64 lg:mx-0 lg:justify-self-end">{mediaPreview}</aside>
+        </div>}
+
+        <div className="mt-10 flex items-center justify-between border-t border-border pt-5">
+          <Button variant="ghost" onClick={() => setActiveStep(step => Math.max(0, step - 1))} disabled={activeStep === 0}><ChevronLeft />Back</Button>
+          <span className="text-xs text-muted-foreground">{activeStep + 1} / {steps.length}</span>
+          <Button variant="outline" onClick={() => setActiveStep(step => Math.min(steps.length - 1, step + 1))} disabled={activeStep === steps.length - 1}>Next<ChevronRight /></Button>
+        </div>
+      </div>
+    </section>
   )
 }
 
