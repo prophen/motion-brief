@@ -73,6 +73,24 @@ test.describe('Smoke tests', () => {
     await expect(page.getByTestId('nav-user-name')).toHaveCount(0)
   })
 
+  test('an unsaved new prompt survives an auth-style return to /home', async ({
+    page,
+  }) => {
+    const prompt = 'A tiny camera captures an overnight train journey'
+    await page.goto('/home?new=1')
+    await page.getByLabel('Creator prompt').fill(prompt)
+
+    // OAuth can return without the original `?new=1`. A pending prompt must
+    // win over the signed-in user's latest saved project in that case.
+    await page.goto('/home')
+
+    await expect(page).toHaveURL(/\/home\?new=1$/)
+    await expect(page.getByLabel('Creator prompt')).toHaveValue(prompt)
+    await expect(
+      page.getByRole('heading', { name: 'Untitled creative brief' }),
+    ).toBeVisible()
+  })
+
   test('unknown route shows 404', async ({ page }) => {
     await page.goto('/nonexistent-page-xyz')
     await waitForApp(page)

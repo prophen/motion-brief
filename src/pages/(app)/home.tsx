@@ -55,13 +55,13 @@ import {
 import { MOTION_PRESETS, normalizeMotionPreset } from '../../lib/motion-presets'
 import { FINAL_RENDER_ENABLED } from '../../lib/pipeline-config'
 import type { RenderPreflight } from '../../lib/render-preflight'
-import { readMediaDuration } from '../../lib/video-upload'
-import { MOTIONBRIEF_VOICES } from '../../lib/voices'
 import {
   clearCreatorPromptDraft,
   readCreatorPromptDraft,
   writeCreatorPromptDraft,
 } from '../../lib/studio-draft'
+import { readMediaDuration } from '../../lib/video-upload'
+import { MOTIONBRIEF_VOICES } from '../../lib/voices'
 
 type PipelineResult = {
   projectId: string
@@ -141,6 +141,9 @@ export default function HomePage() {
   const [renderAttemptStartedAt, setRenderAttemptStartedAt] = useState<
     number | null
   >(null)
+  const pendingCreatorPrompt = useRef(
+    readCreatorPromptDraft(window.sessionStorage),
+  )
   const loadedRecord = useRef<string | null>(null)
   const appliedBriefJob = useRef<string | null>(null)
   const appliedStillJob = useRef<string | null>(null)
@@ -150,9 +153,12 @@ export default function HomePage() {
   const preflightRequestedAt = useRef<number | null>(null)
   const jobsStartedHere = useRef(new Set<string>())
 
+  const restoringPendingDraft = Boolean(
+    !requestedProjectId && pendingCreatorPrompt.current,
+  )
   const stored = requestedProjectId
     ? records.find((record) => record.recordId === requestedProjectId)
-    : creatingNew
+    : creatingNew || restoringPendingDraft
       ? undefined
       : records[0]
   const briefJob = useMemo(
@@ -248,14 +254,15 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (creatingNew) {
+    if (creatingNew || restoringPendingDraft) {
       if (loadedRecord.current === 'new') return
       loadedRecord.current = 'new'
       setRecordId(null)
       setDraft({
         ...freshMotionProject(),
-        prompt: readCreatorPromptDraft(window.sessionStorage),
+        prompt: pendingCreatorPrompt.current,
       })
+      if (!creatingNew) setSearchParams({ new: '1' }, { replace: true })
       return
     }
     if (!stored || loadedRecord.current === stored.recordId) return
@@ -267,14 +274,15 @@ export default function HomePage() {
       motionPreset: normalizeMotionPreset(stored.data.motionPreset),
       assetManifest: normalizeAssetManifest(stored.data.assetManifest ?? '[]'),
     })
-  }, [creatingNew, stored])
+  }, [creatingNew, restoringPendingDraft, setSearchParams, stored])
 
   // OAuth may leave and reload the app. Keep an unsaved new-project prompt in
   // this tab so the auth round trip does not discard what the creator typed.
   useEffect(() => {
-    if (!creatingNew || recordId) return
+    if ((!creatingNew && !restoringPendingDraft) || recordId) return
+    pendingCreatorPrompt.current = draft.prompt
     writeCreatorPromptDraft(window.sessionStorage, draft.prompt)
-  }, [creatingNew, draft.prompt, recordId])
+  }, [creatingNew, draft.prompt, recordId, restoringPendingDraft])
 
   async function save() {
     if (!isSignedIn)
@@ -322,6 +330,7 @@ export default function HomePage() {
         loadedRecord.current = createdId
         setSearchParams({ project: createdId }, { replace: true })
       }
+      pendingCreatorPrompt.current = ''
       clearCreatorPromptDraft(window.sessionStorage)
       setDraft({ ...values, status: savedStatus })
       toast.success(
