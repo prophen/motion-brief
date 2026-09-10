@@ -2,7 +2,7 @@
 
 MotionBrief turns one rough creator prompt into a production-ready five-second campaign concept: an editable creative brief, a portrait visual, a selectable camera move, narration, and a final vertical MP4.
 
-The workflow keeps the creator in control. Every generated field can be reviewed and edited, paid provider calls require explicit confirmation, and deterministic camera moves make the browser preview immediate and the final render predictable.
+The workflow keeps the creator in control. Every generated field can be reviewed and edited, paid actions show their estimated cost on the button before they run, and deterministic camera moves make the browser preview immediate and the final render predictable.
 
 ![MotionBrief landing page showing the prompt-to-campaign workflow](docs/screenshots/landing-page.png)
 
@@ -38,7 +38,7 @@ Long-running provider calls execute as resumable background jobs rather than hol
 - Editable project records are private to their owner and synchronized through DeepSpace records.
 - Generated media is exported through shareable links. Anyone with one of those links can view that asset.
 - Generation requires sign-in.
-- Paid provider calls are never triggered by tests or ordinary page loads; the UI presents the action and estimated or fixed cost first.
+- Paid provider calls are never triggered by tests or ordinary page loads; each paid action shows its estimated or fixed cost on its button before it runs.
 - If generation succeeds but durable storage fails, the result is retained temporarily so storage can be retried without paying to regenerate it.
 - Final renders run a free asset preflight before submitting work to Shotstack.
 
