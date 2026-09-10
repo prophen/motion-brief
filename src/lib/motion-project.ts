@@ -14,6 +14,8 @@ export type MotionProject = {
   headline: string
   stillPrompt: string
   motionPrompt: string
+  briefRequestId: string
+  appliedBriefJobId: string
   motionPreset: MotionPreset
   pipelineVersion: number
   assetManifest: string
@@ -36,6 +38,8 @@ export const newMotionProject: MotionProject = {
   headline: '',
   stillPrompt: '',
   motionPrompt: '',
+  briefRequestId: '',
+  appliedBriefJobId: '',
   motionPreset: DEFAULT_MOTION_PRESET,
   pipelineVersion: 1,
   assetManifest: '[]',

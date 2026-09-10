@@ -69,6 +69,7 @@ import {
 } from '../../lib/studio-draft'
 import { readMediaDuration } from '../../lib/video-upload'
 import { MOTIONBRIEF_VOICES } from '../../lib/voices'
+import { briefJobPatch } from '../../lib/brief-job'
 
 type PipelineResult = {
   projectId: string
@@ -377,9 +378,17 @@ export default function HomePage() {
       )
     setQueuing(true)
     try {
+      const requestId = crypto.randomUUID()
+      // Persist intent before the paid job starts, so a reload can recover
+      // this result and distinguish it from historical generation jobs.
+      await putConfirmed(recordId, {
+        briefRequestId: requestId,
+        prompt: draft.prompt,
+      })
+      setDraft((current) => ({ ...current, briefRequestId: requestId }))
       const jobId = await enqueue(
         'motionbrief-generate-brief',
-        { projectId: recordId, prompt: draft.prompt },
+        { projectId: recordId, prompt: draft.prompt, requestId },
         { maxAttempts: 1 },
       )
       jobsStartedHere.current.add(jobId)
@@ -598,32 +607,30 @@ export default function HomePage() {
 
   useEffect(() => {
     if (
+      !recordId ||
+      loadedRecord.current !== recordId ||
       briefJob?.status !== 'succeeded' ||
       !briefJob.result?.brief ||
       appliedBriefJob.current === briefJob.id
     )
       return
+    const patch = briefJobPatch(draft, recordId, briefJob)
+    if (!patch) return
     appliedBriefJob.current = briefJob.id
     const shouldNotify = jobsStartedHere.current.delete(briefJob.id)
-    const next = {
-      ...draft,
-      ...briefJob.result.brief,
-      status: 'ready' as const,
-    }
-    setDraft(next)
-    if (recordId)
-      void putConfirmed(recordId, next)
-        .then(() => {
-          if (shouldNotify)
-            toast.success('AI brief ready', 'Review and edit every field.')
-        })
-        .catch((error) => {
-          if (shouldNotify)
-            toast.error(
-              'Brief ready but not saved',
-              error instanceof Error ? error.message : 'Save it manually.',
-            )
-        })
+    setDraft((current) => ({ ...current, ...patch }))
+    void putConfirmed(recordId, patch)
+      .then(() => {
+        if (shouldNotify)
+          toast.success('AI brief ready', 'Review and edit every field.')
+      })
+      .catch((error) => {
+        if (shouldNotify)
+          toast.error(
+            'Brief ready but not saved',
+            error instanceof Error ? error.message : 'Save it manually.',
+          )
+      })
   }, [briefJob, draft, putConfirmed, recordId, toast])
 
   useEffect(() => {
@@ -638,7 +645,6 @@ export default function HomePage() {
     if (imageAsset?.key === stillJob.result.asset.key) return
     const manifestWithoutRender = removeAssetKind(draft.assetManifest, 'render')
     const next = {
-      ...draft,
       imageUrl: appFileUrl(stillJob.result.asset.key),
       renderUrl: '',
       assetManifest: upsertAssetManifest(
@@ -647,7 +653,7 @@ export default function HomePage() {
       ),
       status: 'ready' as const,
     }
-    setDraft(next)
+    setDraft((current) => ({ ...current, ...next }))
     if (recordId)
       void putConfirmed(recordId, next)
         .then(() => {
@@ -677,7 +683,6 @@ export default function HomePage() {
     const shouldNotify = jobsStartedHere.current.delete(voiceJob.id)
     if (audioAsset?.key === voiceJob.result.asset.key) return
     const next = {
-      ...draft,
       audioUrl: appFileUrl(voiceJob.result.asset.key),
       assetManifest: upsertAssetManifest(
         draft.assetManifest,
@@ -685,7 +690,7 @@ export default function HomePage() {
       ),
       status: 'ready' as const,
     }
-    setDraft(next)
+    setDraft((current) => ({ ...current, ...next }))
     if (recordId)
       void putConfirmed(recordId, next)
         .then(() => {
@@ -774,7 +779,6 @@ export default function HomePage() {
       return
     if (renderAsset?.key === renderJob.result.asset.key) return
     const next = {
-      ...draft,
       renderUrl: appFileUrl(renderJob.result.asset.key),
       assetManifest: upsertAssetManifest(
         draft.assetManifest,
@@ -782,7 +786,7 @@ export default function HomePage() {
       ),
       status: 'complete' as const,
     }
-    setDraft(next)
+    setDraft((current) => ({ ...current, ...next }))
     if (recordId)
       void putConfirmed(recordId, next)
         .then(() => {

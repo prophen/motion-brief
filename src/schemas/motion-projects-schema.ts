@@ -14,6 +14,8 @@ export const motionProjectsSchema: CollectionSchema = {
     { name: 'headline', storage: 'text', interpretation: 'plain' },
     { name: 'stillPrompt', storage: 'text', interpretation: 'plain' },
     { name: 'motionPrompt', storage: 'text', interpretation: 'plain' },
+    { name: 'briefRequestId', storage: 'text', interpretation: 'plain' },
+    { name: 'appliedBriefJobId', storage: 'text', interpretation: 'plain' },
     {
       name: 'motionPreset',
       storage: 'text',
