@@ -70,6 +70,7 @@ import {
 import { readMediaDuration } from '../../lib/video-upload'
 import { MOTIONBRIEF_VOICES } from '../../lib/voices'
 import { briefJobPatch } from '../../lib/brief-job'
+import { PendingEdits } from '../../lib/pending-edits'
 
 type PipelineResult = {
   projectId: string
@@ -154,6 +155,7 @@ export default function HomePage() {
     readCreatorPromptDraft(window.sessionStorage),
   )
   const loadedRecord = useRef<string | null>(null)
+  const pendingEdits = useRef(new PendingEdits<Project>())
   const appliedBriefJob = useRef<string | null>(null)
   const appliedStillJob = useRef<string | null>(null)
   const appliedVoiceJob = useRef<string | null>(null)
@@ -258,6 +260,7 @@ export default function HomePage() {
   )
 
   const set = <K extends keyof Project>(key: K, value: Project[K]) => {
+    pendingEdits.current.set(key, value)
     setDraft((current) => ({
       ...current,
       [key]: value,
@@ -269,6 +272,7 @@ export default function HomePage() {
     if (creatingNew || restoringPendingDraft) {
       if (loadedRecord.current === 'new') return
       loadedRecord.current = 'new'
+      pendingEdits.current = new PendingEdits<Project>()
       setRecordId(null)
       setDraft({
         ...freshMotionProject(),
@@ -280,6 +284,7 @@ export default function HomePage() {
     }
     if (!stored || loadedRecord.current === stored.recordId) return
     loadedRecord.current = stored.recordId
+    pendingEdits.current = new PendingEdits<Project>()
     setRecordId(stored.recordId)
     setDraft({
       ...newMotionProject,
@@ -313,6 +318,7 @@ export default function HomePage() {
       setShowAuthModal(true)
       return
     }
+    if (saving || !ready) return
     const scopedManifest = recordId
       ? normalizeProjectAssetManifest(
           draft.assetManifest,
@@ -343,19 +349,22 @@ export default function HomePage() {
       )
     }
     setSaving(true)
+    const edits = pendingEdits.current.snapshot()
     try {
-      const savedStatus = draft.status === 'complete' ? 'complete' : 'ready'
-      if (recordId)
-        await putConfirmed(recordId, { ...values, status: savedStatus })
-      else {
+      if (recordId) {
+        // DeepSpace merges patches server-side. Never send untouched fields
+        // from this tab, including media and generation bookkeeping.
+        if (Object.keys(edits.patch).length)
+          await putConfirmed(recordId, { ...edits.patch, status: 'ready' })
+      } else {
         const createdId = await createConfirmed({ ...values, status: 'ready' })
         setRecordId(createdId)
         loadedRecord.current = createdId
         setSearchParams({ project: createdId }, { replace: true })
       }
+      edits.acknowledge()
       pendingCreatorPrompt.current = ''
       clearCreatorPromptDraft(window.sessionStorage)
-      setDraft({ ...values, status: savedStatus })
       toast.success(
         'Brief saved',
         'Your editable concept is synced in DeepSpace.',
@@ -906,10 +915,14 @@ export default function HomePage() {
     </div>
   )
 
+  const hasUnsavedChanges =
+    Object.keys(pendingEdits.current.snapshot().patch).length > 0 ||
+    (!recordId && Boolean(draft.prompt.trim()))
+
   return (
     <section
       aria-labelledby="studio-heading"
-      className="min-h-full bg-background text-foreground"
+      className="flex min-h-full flex-col bg-background text-foreground"
     >
       <header className="border-b border-border px-5 py-6 md:px-9">
         <div className="mx-auto flex max-w-6xl flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -929,15 +942,6 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={save}
-              loading={saving}
-              disabled={!ready}
-            >
-              <Save />
-              Save
-            </Button>
             <Link
               className={buttonVariants({ variant: 'outline' })}
               to="/home?new=1"
@@ -983,7 +987,7 @@ export default function HomePage() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-6xl px-5 py-8 md:px-9 md:py-10">
+      <div className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 md:px-9 md:py-10">
         {activeStep === 0 && (
           <div className="mx-auto max-w-3xl space-y-6">
             <div>
@@ -1019,16 +1023,6 @@ export default function HomePage() {
                   placeholder="A pocket camera that makes ordinary walks feel cinematic…"
                   className="min-h-36 bg-background text-lg leading-relaxed"
                 />
-                <Button
-                  className="mt-3"
-                  variant={recordId ? 'outline' : 'default'}
-                  onClick={save}
-                  loading={saving}
-                  disabled={!ready || !draft.prompt.trim()}
-                >
-                  <Save />
-                  {recordId ? 'Save prompt changes' : 'Save prompt'}
-                </Button>
               </Field>
             </div>
             <div
@@ -1440,6 +1434,27 @@ export default function HomePage() {
           )}
         </div>
       </div>
+      <footer className="sticky bottom-0 z-20 shrink-0 border-t border-border bg-background px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-9">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+          <p role="status" className="text-sm text-muted-foreground">
+            {saving
+              ? 'Saving…'
+              : hasUnsavedChanges
+                ? 'Unsaved changes'
+                : recordId
+                  ? 'All changes saved'
+                  : 'Add a prompt to get started'}
+          </p>
+          <Button
+            onClick={save}
+            loading={saving}
+            disabled={!ready || !draft.prompt.trim() || !hasUnsavedChanges}
+          >
+            <Save />
+            {recordId ? 'Save changes' : 'Save prompt'}
+          </Button>
+        </div>
+      </footer>
       {showAuthModal && !isSignedIn && (
         <AuthOverlay onClose={() => setShowAuthModal(false)} />
       )}
