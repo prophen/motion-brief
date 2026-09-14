@@ -13,6 +13,12 @@ The workflow keeps the creator in control. Every generated field can be reviewed
 
 </details>
 
+## Walkthrough
+
+A 5:30 video walkthrough of the full workflow — one rough campaign prompt to a finished 5-second 9:16 MP4, including the decision to use deterministic camera moves instead of generative video:
+
+[![MotionBrief walkthrough](https://img.youtube.com/vi/EFeR-W4iiL4/0.jpg)](https://youtu.be/EFeR-W4iiL4)
+
 ## What it does
 
 1. **Build the brief** — save a creator prompt, generate campaign strategy and copy, then edit the audience, objective, headline, and creative direction.
