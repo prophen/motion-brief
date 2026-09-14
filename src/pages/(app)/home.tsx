@@ -274,6 +274,7 @@ export default function HomePage() {
       loadedRecord.current = 'new'
       pendingEdits.current = new PendingEdits<Project>()
       setRecordId(null)
+      setActiveStep(0)
       setDraft({
         ...freshMotionProject(),
         prompt: pendingCreatorPrompt.current,
@@ -945,6 +946,7 @@ export default function HomePage() {
             <Link
               className={buttonVariants({ variant: 'outline' })}
               to="/home?new=1"
+              onClick={() => setActiveStep(0)}
             >
               <Plus />
               New
